@@ -2,12 +2,13 @@
 //  RegistrationViewController.swift
 //  swovie
 //
-//  Created by Екактерина Максаева on 05.07.2025.
+//  Created by Екатерина Максаева on 05.07.2025.
 //
 
-import Foundation
 import UIKit
 import FirebaseAuth
+import FirebaseCore
+import FirebaseFirestore
 
 class AuthViewController: UIViewController {
     
@@ -88,18 +89,36 @@ class AuthViewController: UIViewController {
         }
         
         if segmentedControl.selectedSegmentIndex == 0 {
-            Auth.auth().signIn(withEmail: email, password: password) { [weak self] _, error in
+            // Вход
+            Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
                 if let error = error {
                     self?.showAlert(title: "Ошибка входа", message: error.localizedDescription)
                 } else {
-                    self?.showMainScreen()
+                    self?.checkUserProfileExists()
                 }
             }
         } else {
-            Auth.auth().createUser(withEmail: email, password: password) { [weak self] _, error in
+            // Регистрация
+            Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
                 if let error = error {
                     self?.showAlert(title: "Ошибка регистрации", message: error.localizedDescription)
-                } else {
+                    return
+                }
+                
+                guard let userId = result?.user.uid else { return }
+                
+                // Создаем документ пользователя
+                let userData: [String: Any] = [
+                    "email": email,
+                    "name": email.components(separatedBy: "@").first ?? "User",
+                    "avatarName": "systemBlue",
+                    "createdAt": Timestamp(date: Date())
+                ]
+                
+                Firestore.firestore().collection("users").document(userId).setData(userData) { error in
+                    if let error = error {
+                        print("Ошибка создания профиля: \(error.localizedDescription)")
+                    }
                     self?.showMainScreen()
                 }
             }
@@ -107,7 +126,7 @@ class AuthViewController: UIViewController {
     }
     
     private func showMainScreen() {
-        let mainVC = MainViewController()
+        let mainVC = MainTabBarController()
         navigationController?.setViewControllers([mainVC], animated: true)
     }
     
@@ -115,5 +134,39 @@ class AuthViewController: UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    private func checkUserProfileExists() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        Firestore.firestore().collection("users").document(userId).getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("Ошибка проверки профиля: \(error.localizedDescription)")
+            }
+            
+            if snapshot?.exists ?? false {
+                self?.showMainScreen()
+            } else {
+                self?.createDefaultProfile()
+            }
+        }
+    }
+
+    private func createDefaultProfile() {
+        guard let user = Auth.auth().currentUser else { return }
+        
+        let userData: [String: Any] = [
+            "email": user.email ?? "",
+            "name": user.email?.components(separatedBy: "@").first ?? "User",
+            "avatarName": "systemBlue",
+            "createdAt": Timestamp(date: Date())
+        ]
+        
+        Firestore.firestore().collection("users").document(user.uid).setData(userData) { error in
+            if let error = error {
+                print("Ошибка создания профиля: \(error.localizedDescription)")
+            }
+            self.showMainScreen()
+        }
     }
 }

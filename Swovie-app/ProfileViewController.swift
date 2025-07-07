@@ -1,16 +1,18 @@
 import UIKit
+import FirebaseAuth
 
 class ProfileViewController: UIViewController {
     
-    private var userId: String = "User123"
+    private var user: User?
+    private let avatarView = UIView()
+    private let scrollView = UIScrollView()
+    private let contentView = UIStackView()
+    private var avatarImage: UIImage? = UIImage(systemName: "person.circle.fill")
     private var collections: [MovieCollection] = [
         MovieCollection(name: "Любимые Sci-Fi", reviews: [
             MovieReview(movieId: "10", rating: 5, comment: "Великолепно!")
         ])
     ]
-    
-    private let scrollView = UIScrollView()
-    private let contentView = UIStackView()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,7 +20,72 @@ class ProfileViewController: UIViewController {
         title = "Профиль"
         
         setupScrollView()
+        setupProfileHeader()
         setupProfileInfo()
+        setupLogoutButton()
+        loadUserData()
+    }
+    
+    private func loadUserData() {
+            AuthService.shared.fetchUserData { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let user):
+                        self?.user = user
+                        self?.updateProfileUI()
+                    case .failure(let error):
+                        print("Ошибка загрузки данных пользователя: \(error.localizedDescription)")
+                        self?.showErrorAlert(message: "Не удалось загрузить данные профиля")
+                    }
+                }
+            }
+        }
+    
+    private func updateProfileUI() {
+        guard let user = user else { return }
+        
+        // Обновляем аватар
+        avatarView.backgroundColor = user.avatarName
+        
+        // Обновляем текст
+        refreshProfile()
+    }
+    
+    private func setupLogoutButton() {
+        // Создаем кнопку с иконкой выхода
+        let logoutButton = UIButton(type: .system)
+        logoutButton.setImage(UIImage(systemName: "rectangle.portrait.and.arrow.right"), for: .normal)
+        logoutButton.tintColor = .systemRed
+        logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
+        
+        // Создаем UIBarButtonItem с кастомной view (кнопкой)
+        let logoutBarButton = UIBarButtonItem(customView: logoutButton)
+        
+        // Устанавливаем размер кнопки
+        logoutButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        logoutButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        navigationItem.rightBarButtonItem = logoutBarButton
+    }
+    
+    @objc private func logoutTapped() {
+        AuthService.shared.logout { [weak self] result in
+            switch result {
+            case .success:
+                // После выхода показываем экран авторизации
+                let authVC = AuthViewController()
+                UIApplication.shared.windows.first?.rootViewController = UINavigationController(rootViewController: authVC)
+                UIApplication.shared.windows.first?.makeKeyAndVisible()
+            case .failure(let error):
+                self?.showAlert(title: "Ошибка", message: error.localizedDescription)
+            }
+        }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func setupScrollView() {
@@ -33,7 +100,7 @@ class ProfileViewController: UIViewController {
         ])
         
         contentView.axis = .vertical
-        contentView.spacing = 16
+        contentView.spacing = 24
         contentView.alignment = .fill
         contentView.translatesAutoresizingMaskIntoConstraints = false
         
@@ -48,10 +115,54 @@ class ProfileViewController: UIViewController {
         ])
     }
     
-    private func setupProfileInfo() {
-        let idLabel = makeTitleLabel("ID: \(userId)")
-        contentView.addArrangedSubview(idLabel)
+    private func setupProfileHeader() {
+        // Контейнер для аватарки и текстовой информации
+        let headerStack = UIStackView()
+        headerStack.axis = .horizontal
+        headerStack.spacing = 16
+        headerStack.alignment = .center
         
+        // Аватарка
+        let avatarImageView = UIImageView()
+        avatarImageView.image = avatarImage
+        avatarImageView.tintColor = .systemGray
+        avatarImageView.contentMode = .scaleAspectFill
+        avatarImageView.layer.cornerRadius = 50
+        avatarImageView.clipsToBounds = true
+        avatarImageView.widthAnchor.constraint(equalToConstant: 100).isActive = true
+        avatarImageView.heightAnchor.constraint(equalToConstant: 100).isActive = true
+        
+        // Текстовая информация
+        let infoStack = UIStackView()
+        infoStack.axis = .vertical
+        infoStack.spacing = 8
+        
+        let usernameLabel = UILabel()
+        usernameLabel.text = user?.name
+        usernameLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        
+        
+        let idLabel = UILabel()
+        idLabel.text = "ID: \(user?.id ?? "default")"
+        idLabel.font = UIFont.systemFont(ofSize: 14)
+        idLabel.textColor = .tertiaryLabel
+        
+        infoStack.addArrangedSubview(usernameLabel)
+        infoStack.addArrangedSubview(idLabel)
+        
+        headerStack.addArrangedSubview(avatarImageView)
+        headerStack.addArrangedSubview(infoStack)
+        
+        contentView.addArrangedSubview(headerStack)
+        
+        
+        let divider = UIView()
+        divider.backgroundColor = .systemGray5
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        contentView.addArrangedSubview(divider)
+    }
+    
+    private func setupProfileInfo() {
         let collectionsTitle = makeTitleLabel("Мои коллекции")
         contentView.addArrangedSubview(collectionsTitle)
         
@@ -94,15 +205,81 @@ class ProfileViewController: UIViewController {
     }
     
     private func refreshProfile() {
-        contentView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        setupProfileInfo()
-    }
+            guard let user = user else { return }
+            
+            // Обновляем аватар и текст
+            if let initialsLabel = avatarView.subviews.first as? UILabel {
+                initialsLabel.text = user.name.initials()
+            }
+            
+            if let headerStack = contentView.arrangedSubviews.first as? UIStackView,
+               let infoStack = headerStack.arrangedSubviews.last as? UIStackView,
+               let usernameLabel = infoStack.arrangedSubviews.first as? UILabel,
+               let idLabel = infoStack.arrangedSubviews.last as? UILabel {
+                
+                usernameLabel.text = user.name
+                idLabel.text = "ID: \(user.id)"
+            }
+        }
     
     private func makeTitleLabel(_ text: String) -> UILabel {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        label.font = UIFont.systemFont(ofSize: 20, weight: .bold)
         label.text = text
         label.numberOfLines = 0
         return label
+    }
+    
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+}
+
+extension String {
+    func initials() -> String {
+        let parts = self.components(separatedBy: " ")
+        let initials = parts.prefix(2).compactMap { $0.first?.uppercased() }
+        return initials.joined()
+    }
+}
+
+extension ProfileViewController {
+    private func setupChangeAvatarButton() {
+        let changeButton = UIButton(type: .system)
+        changeButton.setTitle("Сменить цвет аватара", for: .normal)
+        changeButton.addTarget(self, action: #selector(changeAvatarColor), for: .touchUpInside)
+        
+        // Добавляем кнопку под аватаром
+        let avatarContainer = UIStackView(arrangedSubviews: [avatarView, changeButton])
+        avatarContainer.axis = .vertical
+        avatarContainer.spacing = 8
+        avatarContainer.alignment = .center
+    }
+    
+    @objc private func changeAvatarColor() {
+        user?.avatarName = .random()
+        avatarView.backgroundColor = user?.avatarName
+        
+        // Анимация изменения
+        UIView.animate(withDuration: 0.3, animations: {
+            self.avatarView.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+        }) { _ in
+            UIView.animate(withDuration: 0.3) {
+                self.avatarView.transform = .identity
+            }
+        }
+    }
+}
+
+extension UIColor {
+    static func random() -> UIColor {
+        return UIColor(
+            red: .random(in: 0...1),
+            green: .random(in: 0...1),
+            blue: .random(in: 0...1),
+            alpha: 1.0
+        )
     }
 }

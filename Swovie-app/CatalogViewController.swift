@@ -91,9 +91,7 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
 
     private func sampleMovies() -> [Movie] {
         [
-            Movie(id: UUID().uuidString, title: "Интерстеллар", genre: "Sci-Fi", year: 2014, director: "К. Нолан", rating: 8.6, posterName: "interstellar"),
-            Movie(id: UUID().uuidString, title: "Начало", genre: "Sci-Fi", year: 2010, director: "К. Нолан", rating: 8.8, posterName: "inception"),
-            Movie(id: UUID().uuidString, title: "Титаник", genre: "Drama", year: 1997, director: "Д. Кэмерон", rating: 7.8, posterName: "titanic")
+            // Здесь загрудать фильмы из апи
         ]
     }
 }
@@ -136,7 +134,7 @@ class MovieCell: UICollectionViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with movie: Movie) {
-        imageView.image = UIImage(named: movie.posterName)
+        imageView.image = UIImage(named: movie.poster_path!)
         titleLabel.text = movie.title
         ratingLabel.text = "⭐️ \(movie.rating)"
     }

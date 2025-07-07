@@ -2,7 +2,7 @@
 //  LoginViewController.swift
 //  swovie
 //
-//  Created by Екактерина Максаева on 05.07.2025.
+//  Created by Екатерина Максаева on 05.07.2025.
 //
 
 import Foundation

@@ -1,16 +1,32 @@
 import Foundation
 import UIKit
 
-struct Movie {
-    let id: String
-    let title: String
-    let genre: String
-    let year: Int
-    let director: String
-    let rating: Double
-    let posterName: String // название изображения в ассетах
+struct MovieResponse: Decodable {
+    let results: [Movie]
+    let total_pages: Int
+    let total_results: Int
 }
 
+struct Movie: Decodable {
+    let id: Int
+    let title: String
+    let genre: String
+    let overview: String
+    let poster_path: String?
+    let vote_average: Double
+    let rating: Double
+    let release_date: String?
+    
+    var posterURL: URL? {
+        guard let path = poster_path else { return nil }
+        return URL(string: "https://image.tmdb.org/t/p/w500\(path)")
+    }
+    
+    var year: String {
+        guard let date = release_date else { return "N/A" }
+        return String(date.prefix(4))
+    }
+}
 struct MovieReview {
     let movieId: String
     let rating: Int
@@ -25,6 +41,6 @@ struct MovieCollection {
 struct User {
     let id: String
     let name: String
-    let avatarName: UIColor
+    var avatarName: UIColor
     var likedMovies: [Movie] = []
 }

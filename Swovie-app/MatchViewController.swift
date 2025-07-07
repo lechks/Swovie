@@ -72,59 +72,25 @@ class MatchViewController: UIViewController {
     
     @objc private func startMatching() {
         users.removeAll()
-        for textField in idTextFields {
-            guard let id = textField.text, !id.isEmpty else { continue }
-            if let user = knownUsersDB.first(where: { $0.id == id }) {
-                users.append(user)
+                for textField in idTextFields {
+                    guard let id = textField.text, !id.isEmpty else { continue }
+                    if let user = knownUsersDB.first(where: { $0.id == id }) {
+                        users.append(user)
+                    }
+                }
+                
+                if users.isEmpty {
+                    let alert = UIAlertController(title: "Ошибка", message: "Не найдено пользователей с такими ID", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Ок", style: .default))
+                    present(alert, animated: true)
+                } else {
+                    showSwipeViewController()
+                }
             }
-        }
-        
-        if users.isEmpty {
-            let alert = UIAlertController(title: "Ошибка", message: "Не найдено пользователей с такими ID", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "Ок", style: .default))
-            present(alert, animated: true)
-        } else {
-            showMatchedUsers()
-        }
-    }
-    
-    private func showMatchedUsers() {
-        let vc = UIViewController()
-        vc.view.backgroundColor = .systemBackground
-        vc.title = "Пользователи для мэтчинга"
-        
-        let sv = UIStackView()
-        sv.axis = .vertical
-        sv.spacing = 12
-        sv.translatesAutoresizingMaskIntoConstraints = false
-        vc.view.addSubview(sv)
-        
-        NSLayoutConstraint.activate([
-            sv.topAnchor.constraint(equalTo: vc.view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            sv.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor, constant: 16),
-            sv.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor, constant: -16)
-        ])
-        
-        for user in users {
-            let hStack = UIStackView()
-            hStack.axis = .horizontal
-            hStack.spacing = 12
             
-            let avatar = UIView()
-            avatar.backgroundColor = user.avatarName
-            avatar.layer.cornerRadius = 20
-            avatar.translatesAutoresizingMaskIntoConstraints = false
-            avatar.widthAnchor.constraint(equalToConstant: 40).isActive = true
-            avatar.heightAnchor.constraint(equalToConstant: 40).isActive = true
-            
-            let label = UILabel()
-            label.text = user.name
-            
-            hStack.addArrangedSubview(avatar)
-            hStack.addArrangedSubview(label)
-            sv.addArrangedSubview(hStack)
-        }
-        
-        navigationController?.pushViewController(vc, animated: true)
+    private func showSwipeViewController() {
+        let swipeVC = SwipeViewController()
+        navigationController?.pushViewController(swipeVC, animated: true)
     }
 }
+
