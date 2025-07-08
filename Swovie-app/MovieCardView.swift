@@ -10,11 +10,11 @@ import UIKit
 import SDWebImage
 
 class MovieCardView: UIView {
-    private let imageView = UIImageView()
-    private let titleLabel = UILabel()
-    private let yearLabel = UILabel()
-    private let ratingLabel = UILabel()
-    private let overviewLabel = UILabel()
+    let imageView = UIImageView()
+    let titleLabel = UILabel()
+    let yearLabel = UILabel()
+    let ratingLabel = UILabel()
+    let overviewLabel = UILabel()
     
     var movie: Movie? {
         didSet {
@@ -43,7 +43,7 @@ class MovieCardView: UIView {
         
         // Градиент для текста поверх изображения
         let gradientLayer = CAGradientLayer()
-        gradientLayer.colors = [UIColor.clear.cgColor, UIColor.black.withAlphaComponent(0.8).cgColor]
+        gradientLayer.colors = [UIColor.clear.cgColor, UIColor.black.withAlphaComponent(1).cgColor]
         gradientLayer.locations = [0.5, 1]
         imageView.layer.addSublayer(gradientLayer)
         
