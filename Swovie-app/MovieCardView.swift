@@ -107,12 +107,12 @@ class MovieCardView: UIView {
         guard let movie = movie else { return }
         
         titleLabel.text = movie.title
-        yearLabel.text = movie.year
-        ratingLabel.text = "★ \(String(format: "%.1f", movie.vote_average))"
+        yearLabel.text = movie.releaseDate
+        ratingLabel.text = "★ \(String(format: "%.1f", movie.voteAverage))"
         overviewLabel.text = movie.overview
         
-        if let url = movie.posterURL {
-            imageView.sd_setImage(with: url, placeholderImage: UIImage(named: "placeholder"))
+        if let url = movie.posterPath {
+            imageView.sd_setImage(with: movie.posterURL, placeholderImage: UIImage(named: "placeholder"))
         } else {
             imageView.image = UIImage(systemName: "film.fill")?
                 .withTintColor(.lightGray, renderingMode: .alwaysOriginal)

@@ -92,25 +92,44 @@ class SwipeViewController: UIViewController {
         
         noMoviesLabel.isHidden = true
         
+        // Удаляем старые карточки
+        currentCard?.removeFromSuperview()
+        nextCard?.removeFromSuperview()
+        
         // Создаем текущую карточку
         currentCard = createCard(for: movies[currentIndex])
         guard let currentCard = currentCard else { return }
         
-        // Добавляем жесты
+        // Настраиваем внешний вид текущей карточки
+        currentCard.transform = .identity
+        currentCard.alpha = 1.0
+        currentCard.backgroundColor = .black  // Или ваш цвет
+        
+        // Добавляем жест ДО добавления на экран
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
         currentCard.addGestureRecognizer(panGesture)
+        currentCard.isUserInteractionEnabled = true
+        
+        view.addSubview(currentCard)
         
         // Создаем следующую карточку (если есть)
         if currentIndex + 1 < movies.count {
             nextCard = createCard(for: movies[currentIndex + 1])
-            nextCard?.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-            nextCard?.alpha = 0.8
+            if let nextCard = nextCard {
+                nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+                nextCard.alpha = 0.8
+                view.insertSubview(nextCard, belowSubview: currentCard)
+            }
         }
     }
     
     private func createCard(for movie: Movie) -> MovieCardView {
         let card = MovieCardView()
         card.movie = movie
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.backgroundColor = .black  // Или ваш цвет фона
+        card.layer.cornerRadius = 15  // Пример скругления углов
+        card.clipsToBounds = true
         card.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(card)
         
@@ -127,6 +146,7 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Gesture Handling
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        
         guard let card = gesture.view as? MovieCardView else { return }
         
         let translation = gesture.translation(in: view)
@@ -170,50 +190,44 @@ class SwipeViewController: UIViewController {
     }
     
     private func cardSwiped(direction: SwipeDirection) {
-        // Сохраняем выбор пользователя
         let movie = movies[currentIndex]
         print("User swiped \(direction) on \(movie.title)")
         
-        // Переходим к следующей карточке
+        // Удаляем текущую карточку
+        currentCard?.removeFromSuperview()
+        currentCard = nil
+        
+        // Переходим к следующему индексу
         currentIndex += 1
         
-        if let nextCard = nextCard {
-            // Анимируем следующую карточку на место текущей
-            UIView.animate(withDuration: 0.3) {
-                nextCard.transform = .identity
-                nextCard.alpha = 1
+        if currentIndex < movies.count {
+            // Делаем следующую карточку текущей
+            currentCard = nextCard
+            currentCard?.transform = .identity
+            currentCard?.alpha = 1.0
+            
+            // Добавляем жест к новой текущей карточке
+            if let currentCard = currentCard {
+                let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+                currentCard.addGestureRecognizer(panGesture)
             }
             
-            // Устанавливаем новую следующую карточку (если есть)
-            self.currentCard = nextCard
+            // Создаем новую следующую карточку
             if currentIndex + 1 < movies.count {
-                self.nextCard = createCard(for: movies[currentIndex + 1])
-                self.nextCard?.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-                self.nextCard?.alpha = 0.8
+                nextCard = createCard(for: movies[currentIndex + 1])
+                nextCard?.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+                nextCard?.alpha = 0.8
+                if let nextCard = nextCard, let currentCard = currentCard {
+                    view.insertSubview(nextCard, belowSubview: currentCard)
+                }
             } else {
-                self.nextCard = nil
+                nextCard = nil
             }
-            
-            // Добавляем жесты к новой текущей карточке
-            let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-            nextCard.addGestureRecognizer(panGesture)
         } else {
             // Больше карточек нет
             currentCard = nil
-            noMoviesLabel.isHidden = false
-            noMoviesLabel.text = "Вы просмотрели все фильмы"
-            
-            // Можно добавить кнопку для сброса
-            let resetButton = UIButton(type: .system)
-            resetButton.setTitle("Начать заново", for: .normal)
-            resetButton.addTarget(self, action: #selector(resetCards), for: .touchUpInside)
-            resetButton.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(resetButton)
-            
-            NSLayoutConstraint.activate([
-                resetButton.topAnchor.constraint(equalTo: noMoviesLabel.bottomAnchor, constant: 20),
-                resetButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
-            ])
+            nextCard = nil
+            // showNoMoreCards()
         }
     }
     

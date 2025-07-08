@@ -25,7 +25,7 @@ class MovieDetailViewController: UIViewController {
     }
 
     private func setupViews() {
-        posterImageView.image = UIImage(named: movie.poster_path!)
+        posterImageView.image = UIImage(named: movie.posterPath!)
         posterImageView.contentMode = .scaleAspectFill
         posterImageView.clipsToBounds = true
         posterImageView.heightAnchor.constraint(equalToConstant: 300).isActive = true
@@ -33,7 +33,7 @@ class MovieDetailViewController: UIViewController {
         titleLabel.text = movie.title
         titleLabel.font = .boldSystemFont(ofSize: 22)
 
-        infoLabel.text = "🎬 \(movie.genre), \(movie.year)\n🎬 Обзор фильма: \(movie.overview)\n⭐️ Рейтинг: \(movie.vote_average)"
+        infoLabel.text = "🎬 \(movie.genreIds[0]), \(movie.releaseYear)\n🎬 Обзор фильма: \(movie.overview)\n⭐️ Рейтинг: \(movie.voteAverage)"
         infoLabel.numberOfLines = 0
 
         rateButton.setTitle("Оценить", for: .normal)
