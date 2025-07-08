@@ -47,10 +47,10 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
 
     @objc private func filterTapped() {
         let alert = UIAlertController(title: "Фильтр по жанру", message: nil, preferredStyle: .actionSheet)
-        let genres = Array(Set(movies.map { $0.genre }))
+        let genres = Array(Set(movies.map { _ in "измените жанр пж"})) //$0.genre
         for genre in genres {
             alert.addAction(UIAlertAction(title: genre, style: .default, handler: { _ in
-                self.filteredMovies = self.movies.filter { $0.genre == genre }
+                self.filteredMovies = self.movies.filter { _ in "измените жанр пж" == genre } // $0.genre
                 self.collectionView.reloadData()
             }))
         }
@@ -65,7 +65,7 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
         if searchText.isEmpty {
             filteredMovies = movies
         } else {
-            filteredMovies = movies.filter { $0.title.lowercased().contains(searchText.lowercased()) || $0.genre.lowercased().contains(searchText.lowercased()) }
+            filteredMovies = movies.filter { $0.title.lowercased().contains(searchText.lowercased()) || "измените жанр пж".lowercased().contains(searchText.lowercased()) } // $0.genre
         }
         collectionView.reloadData()
     }
@@ -91,9 +91,7 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
 
     private func sampleMovies() -> [Movie] {
         [
-            Movie(id: UUID().uuidString, title: "Интерстеллар", genre: "Sci-Fi", year: 2014, director: "К. Нолан", rating: 8.6, posterName: "interstellar"),
-            Movie(id: UUID().uuidString, title: "Начало", genre: "Sci-Fi", year: 2010, director: "К. Нолан", rating: 8.8, posterName: "inception"),
-            Movie(id: UUID().uuidString, title: "Титаник", genre: "Drama", year: 1997, director: "Д. Кэмерон", rating: 7.8, posterName: "titanic")
+            // Здесь загрудать фильмы из апи
         ]
     }
 }
@@ -136,8 +134,8 @@ class MovieCell: UICollectionViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with movie: Movie) {
-        imageView.image = UIImage(named: movie.posterName)
+        imageView.image = UIImage(named: movie.posterPath!)
         titleLabel.text = movie.title
-        ratingLabel.text = "⭐️ \(movie.rating)"
+        ratingLabel.text = "⭐️ \(movie.voteAverage)"
     }
 }
