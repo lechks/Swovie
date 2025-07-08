@@ -13,6 +13,7 @@
 		F14BA7062E199CB800457B41 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F14BA7052E199CB800457B41 /* FirebaseCore */; };
 		F14BA7082E199CB800457B41 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = F14BA7072E199CB800457B41 /* FirebaseDatabase */; };
 		F14BA70A2E199CB800457B41 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F14BA7092E199CB800457B41 /* FirebaseFirestore */; };
+		F188FBC72E1D33ED0005AC60 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F188FBC62E1D33ED0005AC60 /* FirebaseMessaging */; };
 		F1A53D8A2E1A74E700E34E0E /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = F1A53D892E1A74E700E34E0E /* SDWebImage */; };
 		F1A53D8C2E1A74E700E34E0E /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = F1A53D8B2E1A74E700E34E0E /* SDWebImageMapKit */; };
 		F1A53D8F2E1A807500E34E0E /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = F1A53D8E2E1A807500E34E0E /* FirebaseFunctions */; };
@@ -50,6 +51,7 @@
 			files = (
 				F1A53D8A2E1A74E700E34E0E /* SDWebImage in Frameworks */,
 				F14BA7022E199CB800457B41 /* FirebaseAnalytics in Frameworks */,
+				F188FBC72E1D33ED0005AC60 /* FirebaseMessaging in Frameworks */,
 				F12CD9FA2E1BE39400AA05B8 /* FirebaseStorage in Frameworks */,
 				F14BA7062E199CB800457B41 /* FirebaseCore in Frameworks */,
 				F1A53D8F2E1A807500E34E0E /* FirebaseFunctions in Frameworks */,
@@ -116,6 +118,7 @@
 				F1A53D8B2E1A74E700E34E0E /* SDWebImageMapKit */,
 				F1A53D8E2E1A807500E34E0E /* FirebaseFunctions */,
 				F12CD9F92E1BE39400AA05B8 /* FirebaseStorage */,
+				F188FBC62E1D33ED0005AC60 /* FirebaseMessaging */,
 			);
 			productName = "Swovie-app";
 			productReference = 0025BFC22E1681820030954C /* Swovie-app.app */;
@@ -425,6 +428,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F14BA7002E199CB800457B41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		F188FBC62E1D33ED0005AC60 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F14BA7002E199CB800457B41 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 		F1A53D892E1A74E700E34E0E /* SDWebImage */ = {
 			isa = XCSwiftPackageProductDependency;

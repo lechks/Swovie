@@ -8,6 +8,8 @@
 import Foundation
 import UIKit
 import SDWebImage
+import FirebaseFirestore
+import FirebaseAuth
 
 class SwipeViewController: UIViewController {
     
@@ -20,6 +22,10 @@ class SwipeViewController: UIViewController {
     private let movieService = MovieService()
     private var isLoading = false
     
+    var groupId: String?
+    private var groupMembers: [String] = []
+    private var likedMovies: [Int: Set<String>] = [:] // movieId: [userIds]
+    
     private let activityIndicator = UIActivityIndicatorView(style: .large)
     private let noMoviesLabel = UILabel()
     
@@ -27,7 +33,12 @@ class SwipeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadMovies()
+        // loadMovies()
+        if let groupId = groupId {
+            setupGroupListeners(groupId: groupId)
+        } else {
+            loadMovies()
+        }
     }
     
     // MARK: - Setup
@@ -56,6 +67,70 @@ class SwipeViewController: UIViewController {
             noMoviesLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
     }
+    
+    private func setupGroupListeners(groupId: String) {
+            let db = Firestore.firestore()
+            
+            // Слушаем изменения в группе
+            db.collection("groups").document(groupId)
+                .addSnapshotListener { [weak self] snapshot, error in
+                    guard let data = snapshot?.data(),
+                          let members = data["memberIds"] as? [String] else { return }
+                    
+                    self?.groupMembers = members
+                    self?.loadMovies()
+                }
+            
+            // Слушаем свайпы участников группы
+            db.collection("groupSwipes")
+                .whereField("groupId", isEqualTo: groupId)
+                .addSnapshotListener { [weak self] snapshot, error in
+                    guard let documents = snapshot?.documents else { return }
+                    
+                    var newLikedMovies: [Int: Set<String>] = [:]
+                    
+                    for doc in documents {
+                        guard let movieId = doc.data()["movieId"] as? Int,
+                              let userId = doc.data()["userId"] as? String,
+                              let isLiked = doc.data()["isLiked"] as? Bool,
+                              isLiked else { continue }
+                        
+                        if newLikedMovies[movieId] == nil {
+                            newLikedMovies[movieId] = []
+                        }
+                        newLikedMovies[movieId]?.insert(userId)
+                    }
+                    
+                    self?.likedMovies = newLikedMovies
+                    self?.checkForMatches()
+                }
+        }
+        
+        // Добавьте этот метод для проверки мэтчей
+        private func checkForMatches() {
+            for (movieId, userIds) in likedMovies {
+                // Проверяем, всем ли участникам понравился фильм
+                if userIds.count == groupMembers.count {
+                    showMatchPopup(movieId: movieId)
+                    // Удаляем из отслеживания, чтобы не показывать повторно
+                    likedMovies.removeValue(forKey: movieId)
+                }
+            }
+        }
+        
+        // Добавьте этот метод для показа попапа мэтча
+        private func showMatchPopup(movieId: Int) {
+            guard let movie = movies.first(where: { $0.id == movieId }) else { return }
+            
+            let alert = UIAlertController(
+                title: "Мэтч!",
+                message: "Всем в группе понравился фильм \(movie.title)",
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Круто!", style: .default))
+            present(alert, animated: true)
+        }
     
     // MARK: - Data Loading
     private func loadMovies() {
@@ -165,10 +240,16 @@ class SwipeViewController: UIViewController {
         if gesture.state == .ended {
             let velocity = gesture.velocity(in: view)
             let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
+            let screenWidth = UIScreen.main.bounds.width
             
             if shouldDismiss {
                 let direction: CGFloat = translation.x > 0 ? 1 : -1
-                let screenWidth = UIScreen.main.bounds.width
+                let isLiked = direction > 0
+                
+                // Сохраняем свайп в Firestore
+                if let groupId = groupId, let movie = currentCard?.movie {
+                    saveSwipe(movieId: movie.id, isLiked: isLiked, groupId: groupId)
+                }
                 
                 UIView.animate(withDuration: 0.3, animations: {
                     card.center = CGPoint(
@@ -187,6 +268,22 @@ class SwipeViewController: UIViewController {
                 }
             }
         }
+    }
+        
+    // Mетод для сохранения свайпа
+    private func saveSwipe(movieId: Int, isLiked: Bool, groupId: String) {
+                guard let userId = Auth.auth().currentUser?.uid else { return }
+                
+                let db = Firestore.firestore()
+                let swipeData: [String: Any] = [
+                    "movieId": movieId,
+                    "userId": userId,
+                    "groupId": groupId,
+                    "isLiked": isLiked,
+                    "timestamp": Timestamp(date: Date())
+                ]
+                
+                db.collection("groupSwipes").addDocument(data: swipeData)
     }
     
     private func cardSwiped(direction: SwipeDirection) {

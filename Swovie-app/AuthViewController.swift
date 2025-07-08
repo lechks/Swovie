@@ -9,6 +9,7 @@ import UIKit
 import FirebaseAuth
 import FirebaseCore
 import FirebaseFirestore
+import FirebaseMessaging
 
 class AuthViewController: UIViewController {
     
@@ -145,6 +146,8 @@ class AuthViewController: UIViewController {
             }
             
             if snapshot?.exists ?? false {
+                // Обновляем FCM токен при каждом входе
+                self?.updateFCMToken()
                 self?.showMainScreen()
             } else {
                 self?.createDefaultProfile()
@@ -152,21 +155,54 @@ class AuthViewController: UIViewController {
         }
     }
 
+    
+    private func getFCMToken(completion: @escaping (String?) -> Void) {
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                print("Error fetching FCM token: \(error)")
+                completion(nil)
+            } else if let token = token {
+                print("FCM token: \(token)")
+                completion(token)
+            }
+        }
+    }
+    
     private func createDefaultProfile() {
         guard let user = Auth.auth().currentUser else { return }
         
-        let userData: [String: Any] = [
-            "email": user.email ?? "",
-            "name": user.email?.components(separatedBy: "@").first ?? "User",
-            "avatarName": "systemBlue",
-            "createdAt": Timestamp(date: Date())
-        ]
-        
-        Firestore.firestore().collection("users").document(user.uid).setData(userData) { error in
-            if let error = error {
-                print("Ошибка создания профиля: \(error.localizedDescription)")
+        getFCMToken { [weak self] token in
+            let userData: [String: Any] = [
+                "email": user.email ?? "",
+                "name": user.email?.components(separatedBy: "@").first ?? "User",
+                "avatarName": "systemBlue",
+                "fcmToken": token ?? "", // Сохраняем токен
+                "createdAt": Timestamp(date: Date())
+            ]
+            
+            Firestore.firestore().collection("users").document(user.uid).setData(userData) { error in
+                if let error = error {
+                    print("Ошибка создания профиля: \(error.localizedDescription)")
+                }
+                self?.showMainScreen()
             }
-            self.showMainScreen()
+        }
+    }
+    
+    private func updateFCMToken() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        getFCMToken { token in
+            guard let token = token else { return }
+            
+            Firestore.firestore().collection("users").document(userId).updateData([
+                "fcmToken": token,
+                "lastActive": Timestamp(date: Date())
+            ]) { error in
+                if let error = error {
+                    print("Ошибка обновления токена: \(error.localizedDescription)")
+                }
+            }
         }
     }
 }

@@ -146,9 +146,24 @@ class ProfileViewController: UIViewController {
         idLabel.text = "ID: \(user?.id ?? "default")"
         idLabel.font = UIFont.systemFont(ofSize: 14)
         idLabel.textColor = .tertiaryLabel
+        idLabel.isUserInteractionEnabled = true
         
+        // Контейнер для ID
+        let idContainer = UIStackView()
+        idContainer.axis = .horizontal
+        idContainer.spacing = 8
+        idContainer.alignment = .center
+        
+        let copyButton = UIButton(type: .system)
+        copyButton.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
+        copyButton.tintColor = .systemBlue
+        copyButton.addTarget(self, action:#selector(copyIdTapped), for: .touchUpInside)
+        
+        idContainer.addArrangedSubview(idLabel)
+        idContainer.addArrangedSubview(copyButton)
+                
         infoStack.addArrangedSubview(usernameLabel)
-        infoStack.addArrangedSubview(idLabel)
+        infoStack.addArrangedSubview(idContainer)
         
         headerStack.addArrangedSubview(avatarImageView)
         headerStack.addArrangedSubview(infoStack)
@@ -160,6 +175,21 @@ class ProfileViewController: UIViewController {
         divider.backgroundColor = .systemGray5
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
         contentView.addArrangedSubview(divider)
+    }
+    
+    @objc private func copyIdTapped() {
+        guard let userId = user?.id else { return }
+        
+        UIPasteboard.general.string = userId
+        
+        // Показываем всплывающее уведомление о копировании
+        let alert = UIAlertController(title: "Скопировано", message: "ID пользователя скопирован в буфер обмена", preferredStyle: .alert)
+        present(alert, animated: true)
+        
+        // Автоматически скрываем через 1 секунду
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            alert.dismiss(animated: true)
+        }
     }
     
     private func setupProfileInfo() {
