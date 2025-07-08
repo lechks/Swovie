@@ -17,6 +17,7 @@ class MatchViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.1)
         title = "Добавь пользователей"
         
         setupStackView()
@@ -28,6 +29,11 @@ class MatchViewController: UIViewController {
         stackView.axis = .vertical
         stackView.spacing = 12
         stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.layer.cornerRadius = 8
+        stackView.layer.borderWidth = 1
+        stackView.layer.borderColor = UIColor.systemBlue.cgColor
+        stackView.layoutMargins = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        stackView.isLayoutMarginsRelativeArrangement = true
         view.addSubview(stackView)
         
         NSLayoutConstraint.activate([
@@ -41,6 +47,10 @@ class MatchViewController: UIViewController {
         addIdButton.setTitle("➕ Добавить ID", for: .normal)
         addIdButton.translatesAutoresizingMaskIntoConstraints = false
         addIdButton.addTarget(self, action: #selector(addIdField), for: .touchUpInside)
+        addIdButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
+        addIdButton.layer.cornerRadius = 8
+        addIdButton.setTitleColor(.systemBlue, for: .normal)
+        addIdButton.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         view.addSubview(addIdButton)
         
         NSLayoutConstraint.activate([
@@ -54,6 +64,10 @@ class MatchViewController: UIViewController {
         matchButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
         matchButton.translatesAutoresizingMaskIntoConstraints = false
         matchButton.addTarget(self, action: #selector(startMatching), for: .touchUpInside)
+        matchButton.backgroundColor = UIColor.systemBlue
+        matchButton.setTitleColor(.white, for: .normal)
+        matchButton.layer.cornerRadius = 8
+        matchButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 20, bottom: 10, right: 20)
         view.addSubview(matchButton)
         
         NSLayoutConstraint.activate([
@@ -66,8 +80,23 @@ class MatchViewController: UIViewController {
         let textField = UITextField()
         textField.placeholder = "Введите ID пользователя"
         textField.borderStyle = .roundedRect
+        textField.backgroundColor = UIColor.white
+        textField.layer.borderColor = UIColor.systemBlue.cgColor
+        textField.layer.borderWidth = 1
+        let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeToRemove(_:)))
+        swipeGesture.direction = .left
+        textField.addGestureRecognizer(swipeGesture)
+        textField.isUserInteractionEnabled = true
         idTextFields.append(textField)
         stackView.addArrangedSubview(textField)
+    }
+    
+    @objc private func handleSwipeToRemove(_ gesture: UISwipeGestureRecognizer) {
+        if let textField = gesture.view as? UITextField,
+           let index = idTextFields.firstIndex(of: textField) {
+            idTextFields.remove(at: index)
+            textField.removeFromSuperview()
+        }
     }
     
     @objc private func startMatching() {
@@ -93,4 +122,3 @@ class MatchViewController: UIViewController {
         navigationController?.pushViewController(swipeVC, animated: true)
     }
 }
-

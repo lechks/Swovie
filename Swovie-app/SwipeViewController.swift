@@ -9,6 +9,10 @@ import Foundation
 import UIKit
 import SDWebImage
 
+enum SwipeDirection {
+    case left, right
+}
+
 class SwipeViewController: UIViewController {
     
     // MARK: - Properties
@@ -33,7 +37,31 @@ class SwipeViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = "Топ фильмы"
+        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.05)
+        
+        let avatarsStack = UIStackView()
+        avatarsStack.axis = .horizontal
+        avatarsStack.spacing = 8
+        avatarsStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(avatarsStack)
+
+        NSLayoutConstraint.activate([
+            avatarsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            avatarsStack.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+        ])
+
+        for _ in 0..<4 {
+            let avatar = UIImageView()
+            avatar.contentMode = .scaleAspectFill
+            avatar.layer.cornerRadius = 30
+            avatar.layer.masksToBounds = true
+            avatar.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.4)
+            avatar.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            avatar.heightAnchor.constraint(equalToConstant: 60).isActive = true
+            avatarsStack.addArrangedSubview(avatar)
+        }
+        
+        title = "Match"
         
         // Activity Indicator
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -63,7 +91,7 @@ class SwipeViewController: UIViewController {
         
         isLoading = true
         activityIndicator.startAnimating()
-        noMoviesLabel.isHidden = true
+        noMoviesLabel.isHidden = false
         
         movieService.fetchTopMovies { [weak self] result in
             DispatchQueue.main.async {
@@ -103,7 +131,7 @@ class SwipeViewController: UIViewController {
         // Настраиваем внешний вид текущей карточки
         currentCard.transform = .identity
         currentCard.alpha = 1.0
-        currentCard.backgroundColor = .black  // Или ваш цвет
+        currentCard.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
         
         // Добавляем жест ДО добавления на экран
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
@@ -127,18 +155,19 @@ class SwipeViewController: UIViewController {
         let card = MovieCardView()
         card.movie = movie
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.backgroundColor = .black  // Или ваш цвет фона
+        card.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
         card.layer.cornerRadius = 15  // Пример скругления углов
         card.clipsToBounds = true
         card.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(card)
         
         NSLayoutConstraint.activate([
-            card.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.85),
-            card.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.7),
+            card.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.7),
+            card.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.57),
             card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            card.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            card.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 50) // кастомно сдвигаем вниз на 50
         ])
+        
         
         view.layoutIfNeeded()
         return card
@@ -183,7 +212,7 @@ class SwipeViewController: UIViewController {
                 UIView.animate(withDuration: 0.3) {
                     card.center = self.view.center
                     card.transform = .identity
-                    card.backgroundColor = .black
+                    card.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
                 }
             }
         }
@@ -241,8 +270,4 @@ class SwipeViewController: UIViewController {
         }
         setupCards()
     }
-}
-
-enum SwipeDirection {
-    case left, right
 }
