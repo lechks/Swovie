@@ -14,6 +14,8 @@ class ProfileViewController: UIViewController {
         ])
     ]
     
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -116,11 +118,23 @@ class ProfileViewController: UIViewController {
     }
     
     private func setupProfileHeader() {
-        // Контейнер для аватарки и текстовой информации
-        let headerStack = UIStackView()
-        headerStack.axis = .horizontal
-        headerStack.spacing = 16
-        headerStack.alignment = .center
+        // Создаем профильную карточку с frosted glass эффектом
+        let profileCard = UIView()
+        profileCard.translatesAutoresizingMaskIntoConstraints = false
+        profileCard.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.4)
+        profileCard.layer.cornerRadius = 20
+        profileCard.layer.masksToBounds = false
+        profileCard.layer.shadowColor = UIColor.black.cgColor
+        profileCard.layer.shadowOpacity = 0.15
+        profileCard.layer.shadowOffset = CGSize(width: 0, height: 4)
+        profileCard.layer.shadowRadius = 8
+        
+        // Вертикальный стек для содержимого карточки
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
         
         // Аватарка
         let avatarImageView = UIImageView()
@@ -132,56 +146,102 @@ class ProfileViewController: UIViewController {
         avatarImageView.widthAnchor.constraint(equalToConstant: 100).isActive = true
         avatarImageView.heightAnchor.constraint(equalToConstant: 100).isActive = true
         
-        // Текстовая информация
-        let infoStack = UIStackView()
-        infoStack.axis = .vertical
-        infoStack.spacing = 8
-        
+        // Имя пользователя
         let usernameLabel = UILabel()
         usernameLabel.text = user?.name
         usernameLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        usernameLabel.textAlignment = .center
+        usernameLabel.numberOfLines = 1
         
-        
+        // ID пользователя
         let idLabel = UILabel()
         idLabel.text = "ID: \(user?.id ?? "default")"
-        idLabel.font = UIFont.systemFont(ofSize: 14)
+        idLabel.font = UIFont.systemFont(ofSize: 16)
         idLabel.textColor = .tertiaryLabel
+        idLabel.textAlignment = .center
+        idLabel.numberOfLines = 1
         
-        infoStack.addArrangedSubview(usernameLabel)
-        infoStack.addArrangedSubview(idLabel)
+        // Кнопка "Edit Profile"
+        let editProfileButton = UIButton(type: .system)
+        editProfileButton.setTitle("Edit Profile", for: .normal)
+        editProfileButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+        editProfileButton.backgroundColor = UIColor.systemBlue
+        editProfileButton.tintColor = .white
+        editProfileButton.layer.cornerRadius = 12
+        editProfileButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 24, bottom: 10, right: 24)
         
-        headerStack.addArrangedSubview(avatarImageView)
-        headerStack.addArrangedSubview(infoStack)
+        // Добавляем только аватар, имя, ID и кнопку редактирования в стек
+        stack.addArrangedSubview(avatarImageView)
+        stack.addArrangedSubview(usernameLabel)
+        stack.addArrangedSubview(idLabel)
+        stack.addArrangedSubview(editProfileButton)
         
-        contentView.addArrangedSubview(headerStack)
+        profileCard.addSubview(stack)
         
+        // Добавляем профильную карточку в contentView
+        contentView.addArrangedSubview(profileCard)
         
-        let divider = UIView()
-        divider.backgroundColor = .systemGray5
-        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        contentView.addArrangedSubview(divider)
+        // Ограничения для стека внутри карточки
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: profileCard.topAnchor, constant: 24),
+            stack.bottomAnchor.constraint(equalTo: profileCard.bottomAnchor, constant: -24),
+            stack.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor, constant: -24),
+            profileCard.widthAnchor.constraint(equalTo: contentView.widthAnchor)
+        ])
     }
     
     private func setupProfileInfo() {
-        let collectionsTitle = makeTitleLabel("Мои коллекции")
-        contentView.addArrangedSubview(collectionsTitle)
-        
-        for collection in collections {
-            let button = UIButton(type: .system)
-            button.setTitle("📁 \(collection.name) (\(collection.reviews.count))", for: .normal)
-            button.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
-            button.contentHorizontalAlignment = .left
-            button.addTarget(self, action: #selector(openCollection(_:)), for: .touchUpInside)
-            // сохраним в tag индекс коллекции
-            button.tag = collections.firstIndex(where: { $0.name == collection.name }) ?? 0
-            contentView.addArrangedSubview(button)
+        // Create horizontal stack for title and "+" button
+        let collectionsTitleLabel = makeTitleLabel("Мои коллекции")
+        collectionsTitleLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let addButton = UIButton(type: .system)
+        let plusImage = UIImage(systemName: "plus")
+        addButton.setImage(plusImage, for: .normal)
+        addButton.tintColor = .systemBlue
+        addButton.addTarget(self, action: #selector(addCollectionTapped), for: .touchUpInside)
+        addButton.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        addButton.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        addButton.setContentHuggingPriority(.required, for: .horizontal)
+
+        let titleStack = UIStackView(arrangedSubviews: [collectionsTitleLabel, addButton])
+        titleStack.axis = .horizontal
+        titleStack.alignment = .center
+        titleStack.spacing = 8
+        contentView.addArrangedSubview(titleStack)
+
+        for (index, collection) in collections.enumerated() {
+            let folderIcon = UIImageView(image: UIImage(systemName: "folder.fill"))
+            folderIcon.tintColor = UIColor.systemBlue
+            folderIcon.setContentHuggingPriority(.required, for: .horizontal)
+
+            let titleLabel = UILabel()
+            titleLabel.text = collection.name
+            titleLabel.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+            titleLabel.numberOfLines = 1
+
+            let horizontalStack = UIStackView(arrangedSubviews: [folderIcon, titleLabel])
+            horizontalStack.axis = .horizontal
+            horizontalStack.alignment = .center
+            horizontalStack.spacing = 8
+            horizontalStack.isUserInteractionEnabled = true
+            horizontalStack.tag = index
+
+            // Add tap gesture recognizer to horizontalStack
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openCollectionFromView(_:)))
+            horizontalStack.addGestureRecognizer(tapGesture)
+
+            contentView.addArrangedSubview(horizontalStack)
         }
-        
-        let addCollectionButton = UIButton(type: .system)
-        addCollectionButton.setTitle("➕ Добавить коллекцию", for: .normal)
-        addCollectionButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
-        addCollectionButton.addTarget(self, action: #selector(addCollectionTapped), for: .touchUpInside)
-        contentView.addArrangedSubview(addCollectionButton)
+    }
+    
+    @objc private func openCollectionFromView(_ sender: UITapGestureRecognizer) {
+        guard let view = sender.view else { return }
+        let index = view.tag
+        let collection = collections[index]
+        let detailVC = CollectionDetailViewController(collection: collection)
+        navigationController?.pushViewController(detailVC, animated: true)
     }
     
     @objc private func openCollection(_ sender: UIButton) {
@@ -191,18 +251,6 @@ class ProfileViewController: UIViewController {
         navigationController?.pushViewController(detailVC, animated: true)
     }
     
-    @objc private func addCollectionTapped() {
-        let alert = UIAlertController(title: "Новая коллекция", message: "Введите название коллекции", preferredStyle: .alert)
-        alert.addTextField { $0.placeholder = "Например: Фильмы для осени" }
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Создать", style: .default, handler: { [weak self] _ in
-            if let name = alert.textFields?.first?.text, !name.isEmpty {
-                self?.collections.append(MovieCollection(name: name, reviews: []))
-                self?.refreshProfile()
-            }
-        }))
-        present(alert, animated: true)
-    }
     
     private func refreshProfile() {
             guard let user = user else { return }
@@ -212,10 +260,11 @@ class ProfileViewController: UIViewController {
                 initialsLabel.text = user.name.initials()
             }
             
-            if let headerStack = contentView.arrangedSubviews.first as? UIStackView,
-               let infoStack = headerStack.arrangedSubviews.last as? UIStackView,
-               let usernameLabel = infoStack.arrangedSubviews.first as? UILabel,
-               let idLabel = infoStack.arrangedSubviews.last as? UILabel {
+            if let headerStack = contentView.arrangedSubviews.first as? UIView,
+               let stack = headerStack.subviews.first as? UIStackView,
+               stack.arrangedSubviews.count >= 3,
+               let usernameLabel = stack.arrangedSubviews[1] as? UILabel,
+               let idLabel = stack.arrangedSubviews[2] as? UILabel {
                 
                 usernameLabel.text = user.name
                 idLabel.text = "ID: \(user.id)"
@@ -281,5 +330,27 @@ extension UIColor {
             blue: .random(in: 0...1),
             alpha: 1.0
         )
+    }
+}
+
+extension ProfileViewController: CreateCollectionDelegate {
+    @objc private func addCollectionTapped() {
+        let createVC = CreateCollectionViewController()
+        createVC.delegate = self
+        let nav = UINavigationController(rootViewController: createVC)
+        present(nav, animated: true)
+    }
+    
+    func didCreateCollection(_ collection: MovieCollection) {
+        collections.append(collection)
+        reloadCollectionsList()
+    }
+
+    private func reloadCollectionsList() {
+        // удаляем все старые коллекции, оставляя только профильную карточку
+        while contentView.arrangedSubviews.count > 1 {
+            contentView.arrangedSubviews.last?.removeFromSuperview()
+        }
+        setupProfileInfo()
     }
 }
