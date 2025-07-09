@@ -76,6 +76,5 @@ struct User {
     let name: String
     var avatarName: UIColor
     var likedMovies: [Movie] = []
-    var fcmToken: String?
 }
 

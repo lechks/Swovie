@@ -29,16 +29,109 @@ class SwipeViewController: UIViewController {
     private let activityIndicator = UIActivityIndicatorView(style: .large)
     private let noMoviesLabel = UILabel()
     
+    private var expectedMembersCount: Int = 2
+    private var membersOverlayView: UIView!
+    private var membersCollectionView: UICollectionView!
+    private var membersStatusLabel: UILabel!
+    private var groupListener: ListenerRegistration?
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         // loadMovies()
         if let groupId = groupId {
+            setupMembersOverlay()
             setupGroupListeners(groupId: groupId)
         } else {
             loadMovies()
         }
+    }
+    
+    private func setupMembersOverlay() {
+        // Overlay View
+        membersOverlayView = UIView()
+        membersOverlayView.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        membersOverlayView.layer.cornerRadius = 12
+        membersOverlayView.isHidden = false
+        membersOverlayView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Status Label
+        membersStatusLabel = UILabel()
+        membersStatusLabel.textColor = .white
+        membersStatusLabel.font = UIFont.boldSystemFont(ofSize: 18)
+        membersStatusLabel.textAlignment = .center
+        membersStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Collection View Layout
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 60, height: 80)
+        layout.minimumInteritemSpacing = 10
+        
+        // Collection View
+        membersCollectionView = UICollectionView(frame: .zero, collectionViewLayout:layout)
+        membersCollectionView.backgroundColor = .clear
+        membersCollectionView.showsHorizontalScrollIndicator = false
+        membersCollectionView.register(MemberCell.self, forCellWithReuseIdentifier: "MemberCell")
+        membersCollectionView.dataSource = self
+        membersCollectionView.delegate = self
+        membersCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add Subviews
+        membersOverlayView.addSubview(membersStatusLabel)
+        membersOverlayView.addSubview(membersCollectionView)
+        view.addSubview(membersOverlayView)
+        
+        // Constraints
+        NSLayoutConstraint.activate([
+            membersOverlayView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            membersOverlayView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            membersOverlayView.widthAnchor.constraint(equalTo: view.widthAnchor,multiplier: 0.8),
+            membersOverlayView.heightAnchor.constraint(equalToConstant: 200),
+            
+            membersStatusLabel.topAnchor.constraint(equalTo: membersOverlayView.topAnchor, constant: 16),
+            membersStatusLabel.leadingAnchor.constraint(equalTo: membersOverlayView.leadingAnchor, constant: 16),
+            membersStatusLabel.trailingAnchor.constraint(equalTo: membersOverlayView.trailingAnchor, constant: -16),
+            membersStatusLabel.heightAnchor.constraint(equalToConstant: 24),
+            
+            membersCollectionView.topAnchor.constraint(equalTo: membersStatusLabel.bottomAnchor, constant: 16),
+            membersCollectionView.leadingAnchor.constraint(equalTo: membersOverlayView.leadingAnchor, constant: 16),
+            membersCollectionView.trailingAnchor.constraint(equalTo: membersOverlayView.trailingAnchor, constant: -16),
+            membersCollectionView.bottomAnchor.constraint(equalTo: membersOverlayView.bottomAnchor, constant: -16)
+        ])
+        
+        updateMembersStatus()
+    }
+    
+    private func updateMembersStatus() {
+        print("Обновление статуса участников: \(groupMembers.count)/\(expectedMembersCount)")
+        
+        membersStatusLabel.text = "Ожидание участников (\(groupMembers.count)/\(expectedMembersCount))"
+        membersCollectionView.reloadData()
+        
+        if groupMembers.count >= expectedMembersCount {
+            print("Все участники подключились, скрываем оверлей")
+            
+            UIView.animate(withDuration: 0.3, animations: {
+                self.membersOverlayView.alpha = 0
+            }) { _ in
+                self.membersOverlayView.isHidden = true
+                self.loadMovies()
+            }
+        } else {
+            print("Ещё не все участники подключились")
+            membersOverlayView.isHidden = false
+            membersOverlayView.alpha = 1.0
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     // MARK: - Setup
@@ -69,22 +162,47 @@ class SwipeViewController: UIViewController {
     }
     
     private func setupGroupListeners(groupId: String) {
+        let db = Firestore.firestore()
+        let groupRef = db.collection("groups").document(groupId)
+        
+        groupListener = groupRef.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("Error listening to group: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let membersCount = data["membersCount"] as? Int,
+                  let currentMembers = data["currentMembers"] as? [String: Bool] else {
+                print("Group data not found")
+                return
+            }
+            
+            self.groupMembers = Array(currentMembers.keys)
+            self.expectedMembersCount = membersCount
+            self.updateMembersStatus()
+            
+            if self.groupMembers.count >= self.expectedMembersCount {
+                self.loadMovies()
+            }
+        }
+    }
+    
+    private func setupSwipesListener(groupId: String) {
             let db = Firestore.firestore()
             
-            // Слушаем изменения в группе
-            db.collection("groups").document(groupId)
-                .addSnapshotListener { [weak self] snapshot, error in
-                    guard let data = snapshot?.data(),
-                          let members = data["memberIds"] as? [String] else { return }
-                    
-                    self?.groupMembers = members
-                    self?.loadMovies()
-                }
-            
-            // Слушаем свайпы участников группы
             db.collection("groupSwipes")
                 .whereField("groupId", isEqualTo: groupId)
                 .addSnapshotListener { [weak self] snapshot, error in
+                    guard let self = self else { return }
+                    
+                    if let error = error {
+                        print("Error listening to swipes: \(error.localizedDescription)")
+                        return
+                    }
+                    
                     guard let documents = snapshot?.documents else { return }
                     
                     var newLikedMovies: [Int: Set<String>] = [:]
@@ -101,10 +219,11 @@ class SwipeViewController: UIViewController {
                         newLikedMovies[movieId]?.insert(userId)
                     }
                     
-                    self?.likedMovies = newLikedMovies
-                    self?.checkForMatches()
+                    self.likedMovies = newLikedMovies
+                    self.checkForMatches()
                 }
         }
+        
         
         // Добавьте этот метод для проверки мэтчей
         private func checkForMatches() {
@@ -118,7 +237,6 @@ class SwipeViewController: UIViewController {
             }
         }
         
-        // Добавьте этот метод для показа попапа мэтча
         private func showMatchPopup(movieId: Int) {
             guard let movie = movies.first(where: { $0.id == movieId }) else { return }
             
@@ -159,43 +277,41 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Card Setup
     private func setupCards() {
-        guard !movies.isEmpty else {
-            noMoviesLabel.text = "Нет фильмов для отображения"
-            noMoviesLabel.isHidden = false
-            return
-        }
-        
-        noMoviesLabel.isHidden = true
-        
-        // Удаляем старые карточки
-        currentCard?.removeFromSuperview()
-        nextCard?.removeFromSuperview()
-        
-        // Создаем текущую карточку
-        currentCard = createCard(for: movies[currentIndex])
-        guard let currentCard = currentCard else { return }
-        
-        // Настраиваем внешний вид текущей карточки
-        currentCard.transform = .identity
-        currentCard.alpha = 1.0
-        currentCard.backgroundColor = .black  // Или ваш цвет
-        
-        // Добавляем жест ДО добавления на экран
-        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-        currentCard.addGestureRecognizer(panGesture)
-        currentCard.isUserInteractionEnabled = true
-        
-        view.addSubview(currentCard)
-        
-        // Создаем следующую карточку (если есть)
-        if currentIndex + 1 < movies.count {
-            nextCard = createCard(for: movies[currentIndex + 1])
-            if let nextCard = nextCard {
-                nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-                nextCard.alpha = 0.8
-                view.insertSubview(nextCard, belowSubview: currentCard)
+            guard !movies.isEmpty else {
+                noMoviesLabel.text = "Нет фильмов для отображения"
+                noMoviesLabel.isHidden = false
+                return
             }
-        }
+            
+            noMoviesLabel.isHidden = true
+            
+            // Only setup cards if all members joined or it's not a group
+            if groupId == nil || groupMembers.count >= expectedMembersCount {
+                currentCard?.removeFromSuperview()
+                nextCard?.removeFromSuperview()
+                
+                currentCard = createCard(for: movies[currentIndex])
+                guard let currentCard = currentCard else { return }
+                
+                currentCard.transform = .identity
+                currentCard.alpha = 1.0
+                currentCard.backgroundColor = .black
+                
+                let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+                currentCard.addGestureRecognizer(panGesture)
+                currentCard.isUserInteractionEnabled = true
+                
+                view.addSubview(currentCard)
+                
+                if currentIndex + 1 < movies.count {
+                    nextCard = createCard(for: movies[currentIndex + 1])
+                    if let nextCard = nextCard {
+                        nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+                        nextCard.alpha = 0.8
+                        view.insertSubview(nextCard, belowSubview: currentCard)
+                    }
+                }
+            }
     }
     
     private func createCard(for movie: Movie) -> MovieCardView {
@@ -221,50 +337,54 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Gesture Handling
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        
-        guard let card = gesture.view as? MovieCardView else { return }
-        
-        let translation = gesture.translation(in: view)
-        card.center = CGPoint(x: view.center.x + translation.x, y: view.center.y + translation.y)
-        
-        let rotationAngle = translation.x / view.bounds.width * 0.4
-        card.transform = CGAffineTransform(rotationAngle: rotationAngle)
-        
-        // Изменение цвета в зависимости от направления
-        if translation.x > 0 {
-            card.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.2)
-        } else {
-            card.backgroundColor = UIColor.systemRed.withAlphaComponent(0.2)
-        }
-        
-        if gesture.state == .ended {
-            let velocity = gesture.velocity(in: view)
-            let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
-            let screenWidth = UIScreen.main.bounds.width
+            // Don't allow swiping if not all members joined
+            if let groupId = groupId, groupMembers.count < expectedMembersCount {
+                showAlert(title: "Ожидание", message: "Еще не все участники подключились к группе")
+                return
+            }
             
-            if shouldDismiss {
-                let direction: CGFloat = translation.x > 0 ? 1 : -1
-                let isLiked = direction > 0
-                
-                // Сохраняем свайп в Firestore
-                if let groupId = groupId, let movie = currentCard?.movie {
-                    saveSwipe(movieId: movie.id, isLiked: isLiked, groupId: groupId)
-                }
-                
-                UIView.animate(withDuration: 0.3, animations: {
-                    card.center = CGPoint(
-                        x: direction * screenWidth * 1.5,
-                        y: card.center.y + (direction * 100)
-                    )
-                }) { _ in
-                    card.removeFromSuperview()
-                    self.cardSwiped(direction: direction > 0 ? .right : .left)
-                }
+            // Rest of the handlePan implementation remains the same
+            guard let card = gesture.view as? MovieCardView else { return }
+            
+            let translation = gesture.translation(in: view)
+            card.center = CGPoint(x: view.center.x + translation.x, y: view.center.y + translation.y)
+            
+            let rotationAngle = translation.x / view.bounds.width * 0.4
+            card.transform = CGAffineTransform(rotationAngle: rotationAngle)
+            
+            if translation.x > 0 {
+                card.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.2)
             } else {
-                UIView.animate(withDuration: 0.3) {
-                    card.center = self.view.center
-                    card.transform = .identity
-                    card.backgroundColor = .black
+                card.backgroundColor = UIColor.systemRed.withAlphaComponent(0.2)
+            }
+            
+            if gesture.state == .ended {
+                let velocity = gesture.velocity(in: view)
+                let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
+                let screenWidth = UIScreen.main.bounds.width
+                
+                if shouldDismiss {
+                    let direction: CGFloat = translation.x > 0 ? 1 : -1
+                    let isLiked = direction > 0
+                    
+                    if let groupId = groupId, let movie = currentCard?.movie {
+                        saveSwipe(movieId: movie.id, isLiked: isLiked, groupId: groupId)
+                    }
+                    
+                    UIView.animate(withDuration: 0.3, animations: {
+                        card.center = CGPoint(
+                            x: direction * screenWidth * 1.5,
+                            y: card.center.y + (direction * 100)
+                        )
+                    }) { _ in
+                        card.removeFromSuperview()
+                        self.cardSwiped(direction: direction > 0 ? .right : .left)
+                    }
+                } else {
+                    UIView.animate(withDuration: 0.3) {
+                        card.center = self.view.center
+                        card.transform = .identity
+                        card.backgroundColor = .black
                 }
             }
         }
@@ -342,4 +462,65 @@ class SwipeViewController: UIViewController {
 
 enum SwipeDirection {
     case left, right
+}
+
+// MARK: - UICollectionView DataSource & Delegate
+extension SwipeViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return groupMembers.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MemberCell", for: indexPath) as! MemberCell
+        let memberId = groupMembers[indexPath.item]
+        // Here you should fetch user data based on memberId
+        // For now we'll just show the first letter of the ID
+        cell.configure(with: String(memberId.prefix(1)), color: UIColor.random())
+        return cell
+    }
+}
+
+// MARK: - Member Cell
+class MemberCell: UICollectionViewCell {
+    private let avatarView = UIView()
+    private let initialsLabel = UILabel()
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI() {
+        avatarView.layer.cornerRadius = 25
+        avatarView.clipsToBounds = true
+        
+        initialsLabel.textAlignment = .center
+        initialsLabel.textColor = .white
+        initialsLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        
+        contentView.addSubview(avatarView)
+        avatarView.addSubview(initialsLabel)
+        
+        avatarView.translatesAutoresizingMaskIntoConstraints = false
+        initialsLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            avatarView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            avatarView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            avatarView.widthAnchor.constraint(equalToConstant: 50),
+            avatarView.heightAnchor.constraint(equalToConstant: 50),
+            
+            initialsLabel.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
+            initialsLabel.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor)
+        ])
+    }
+    
+    func configure(with initial: String, color: UIColor) {
+        avatarView.backgroundColor = color
+        initialsLabel.text = initial
+    }
 }

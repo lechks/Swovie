@@ -153,17 +153,9 @@ class ProfileViewController: UIViewController {
         idContainer.axis = .horizontal
         idContainer.spacing = 8
         idContainer.alignment = .center
-        
-        let copyButton = UIButton(type: .system)
-        copyButton.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
-        copyButton.tintColor = .systemBlue
-        copyButton.addTarget(self, action:#selector(copyIdTapped), for: .touchUpInside)
-        
-        idContainer.addArrangedSubview(idLabel)
-        idContainer.addArrangedSubview(copyButton)
                 
         infoStack.addArrangedSubview(usernameLabel)
-        infoStack.addArrangedSubview(idContainer)
+        infoStack.addArrangedSubview(idLabel)
         
         headerStack.addArrangedSubview(avatarImageView)
         headerStack.addArrangedSubview(infoStack)
