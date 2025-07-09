@@ -253,14 +253,61 @@ class SwipeViewController: UIViewController {
     }
     
     
-    // Добавьте этот метод для проверки мэтчей
     private func checkForMatches() {
+        guard let groupId = groupId else { return }
+        
         for (movieId, userIds) in likedMovies {
-            // Проверяем, всем ли участникам понравился фильм
             if userIds.count == groupMembers.count {
                 showMatchPopup(movieId: movieId)
-                // Удаляем из отслеживания, чтобы не показывать повторно
                 likedMovies.removeValue(forKey: movieId)
+                
+                // Удаляем группу после мэтча
+                deleteGroupAfterMatch(groupId: groupId, matchedMovieId: movieId)
+            }
+        }
+    }
+
+    private func deleteGroupAfterMatch(groupId: String, matchedMovieId: Int) {
+        let db = Firestore.firestore()
+        
+        // 1. Сначала сохраняем информацию о мэтче
+        let matchData: [String: Any] = [
+            "groupId": groupId,
+            "matchedMovieId": matchedMovieId,
+            "members": groupMembers,
+            "matchedAt": FieldValue.serverTimestamp()
+        ]
+        
+        // 2. Сохраняем в историю мэтчей
+        db.collection("matchHistory").addDocument(data: matchData) { error in
+            if let error = error {
+                print("Ошибка сохранения истории мэтча:", error.localizedDescription)
+            }
+        }
+        
+        // 3. Удаляем группу и все связанные данные
+        let batch = db.batch()
+        
+        // Удаляем группу
+        let groupRef = db.collection("groups").document(groupId)
+        batch.deleteDocument(groupRef)
+        
+        // Удаляем все свайпы группы
+        let swipesRef = db.collection("groupSwipes").whereField("groupId", isEqualTo: groupId)
+        swipesRef.getDocuments { snapshot, _ in
+            snapshot?.documents.forEach { doc in
+                batch.deleteDocument(doc.reference)
+            }
+            
+            // Выполняем batch
+            batch.commit { error in
+                if let error = error {
+                    print("Ошибка удаления группы:", error.localizedDescription)
+                } else {
+                    print("Группа успешно удалена после мэтча")
+                    // Дополнительные действия после удаления
+                    self.navigationController?.popToRootViewController(animated: true)
+                }
             }
         }
     }

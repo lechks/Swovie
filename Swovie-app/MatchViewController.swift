@@ -123,52 +123,30 @@ class MatchViewController: UIViewController {
     }
 
     @objc private func joinGroupTapped() {
-        guard let groupId = groupIdTextField.text, !groupId.isEmpty,
-              let password = passwordTextField.text, !password.isEmpty,
-              let userId = Auth.auth().currentUser?.uid else {
-            showAlert(title: "Ошибка", message: "Заполните все поля")
+        guard let groupId = groupIdTextField.text?.trimmingCharacters(in: .whitespaces),
+              !groupId.isEmpty else {
+            showAlert(title: "Ошибка", message: "Введите ID группы")
             return
         }
         
-        let groupRef = ref.child("groups").child(groupId)
+        let db = Firestore.firestore()
+        let groupRef = db.collection("groups").document(groupId)
         
-        groupRef.observeSingleEvent(of: .value) { [weak self] snapshot in
-            guard let self = self,
-                  snapshot.exists(),
-                  let groupData = snapshot.value as? [String: Any],
-                  let groupPassword = groupData["password"] as? String,
-                  let membersCount = groupData["membersCount"] as? Int,
-                  var currentMembers = groupData["currentMembers"] as? [String: Bool] else {
-                self?.showAlert(title: "Ошибка", message: "Группа не найдена")
+        groupRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                self.showAlert(title: "Ошибка", message: "Ошибка подключения: \(error.localizedDescription)")
                 return
             }
             
-            // Проверка пароля
-            guard groupPassword == password else {
-                self.showAlert(title: "Ошибка", message: "Неверный пароль")
+            guard let snapshot = snapshot, snapshot.exists else {
+                self.showAlert(title: "Ошибка", message: "Группа с ID \(groupId) не найдена")
                 return
             }
             
-            // Проверка свободных мест
-            guard currentMembers.count < membersCount else {
-                self.showAlert(title: "Ошибка", message: "Группа заполнена")
-                return
-            }
-            
-            // Добавление пользователя (как словарь!)
-            currentMembers[userId] = true
-            
-            // Обновляем только подузел currentMembers
-            groupRef.child("currentMembers").setValue(currentMembers) { error, _ in
-                if let error = error {
-                    self.showAlert(title: "Ошибка", message: error.localizedDescription)
-
-                } else {
-                    self.showAlert(title: "Успех", message: "Вы в группе!") {
-                        self.navigateToSwipeScreen(groupId: groupId)
-                    }
-                }
-            }
+            // Дальнейшая обработка существующей группы
+            self.processExistingGroup(snapshot: snapshot)
         }
     }
     
@@ -225,5 +203,47 @@ class MatchViewController: UIViewController {
             completion?()
         })
         present(alert, animated: true)
+    }
+    
+    private func processExistingGroup(snapshot: DocumentSnapshot) {
+        guard let data = snapshot.data(),
+              let password = data["password"] as? String,
+              let membersCount = data["membersCount"] as? Int,
+              var currentMembers = data["currentMembers"] as? [String: Bool],
+              let creator = data["creator"] as? String else {
+            showAlert(title: "Ошибка", message: "Некорректная структура группы")
+            return
+        }
+        
+        // Проверка пароля
+        if passwordTextField.text != password {
+            showAlert(title: "Ошибка", message: "Неверный пароль")
+            return
+        }
+        
+        // Проверка свободных мест
+        if currentMembers.count >= membersCount {
+            showAlert(title: "Ошибка", message: "Группа уже заполнена")
+            return
+        }
+        
+        // Добавление пользователя
+        guard let userId = Auth.auth().currentUser?.uid else {
+            showAlert(title: "Ошибка", message: "Необходима авторизация")
+            return
+        }
+        
+        currentMembers[userId] = true
+        
+        // Обновление группы
+        snapshot.reference.updateData(["currentMembers": currentMembers]) { [weak self] error in
+            if let error = error {
+                self?.showAlert(title: "Ошибка", message: "Ошибка вступления: \(error.localizedDescription)")
+            } else {
+                self?.showAlert(title: "Успех", message: "Вы успешно вступили в группу!") {
+                    self?.navigateToSwipeScreen(groupId: snapshot.documentID)
+                }
+            }
+        }
     }
 }
