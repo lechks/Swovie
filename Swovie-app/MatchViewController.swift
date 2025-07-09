@@ -26,14 +26,10 @@ class MatchViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-<<<<<<< HEAD
         title = "Управление группой"
         
         ref = Database.database().reference()
-=======
-        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.1)
-        title = "Добавь пользователей"
->>>>>>> develop-design
+
         
         setupJoinGroupUI()
         setupCreateGroupUI()
@@ -41,24 +37,12 @@ class MatchViewController: UIViewController {
         setupConstraints()
     }
     
-<<<<<<< HEAD
     private func setupJoinGroupUI() {
         joinGroupStackView.axis = .vertical
         joinGroupStackView.spacing = 16
         joinGroupStackView.alignment = .fill
         joinGroupStackView.distribution = .fillEqually
-=======
-    private func setupStackView() {
-        stackView.axis = .vertical
-        stackView.spacing = 12
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.layer.cornerRadius = 8
-        stackView.layer.borderWidth = 1
-        stackView.layer.borderColor = UIColor.systemBlue.cgColor
-        stackView.layoutMargins = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-        stackView.isLayoutMarginsRelativeArrangement = true
-        view.addSubview(stackView)
->>>>>>> develop-design
+
         
         groupIdTextField.placeholder = "ID группы"
         groupIdTextField.borderStyle = .roundedRect
@@ -81,23 +65,12 @@ class MatchViewController: UIViewController {
         view.addSubview(joinGroupStackView)
     }
     
-<<<<<<< HEAD
+
     private func setupCreateGroupUI() {
         createGroupStackView.axis = .vertical
         createGroupStackView.spacing = 16
         createGroupStackView.alignment = .fill
         createGroupStackView.distribution = .fillEqually
-=======
-    private func setupAddIdButton() {
-        addIdButton.setTitle("➕ Добавить ID", for: .normal)
-        addIdButton.translatesAutoresizingMaskIntoConstraints = false
-        addIdButton.addTarget(self, action: #selector(addIdField), for: .touchUpInside)
-        addIdButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
-        addIdButton.layer.cornerRadius = 8
-        addIdButton.setTitleColor(.systemBlue, for: .normal)
-        addIdButton.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
-        view.addSubview(addIdButton)
->>>>>>> develop-design
         
         membersCountTextField.placeholder = "Количество участников (2-10)"
         membersCountTextField.borderStyle = .roundedRect
@@ -126,23 +99,11 @@ class MatchViewController: UIViewController {
         view.addSubview(orLabel)
     }
     
-<<<<<<< HEAD
     private func setupConstraints() {
         joinGroupStackView.translatesAutoresizingMaskIntoConstraints = false
         createGroupStackView.translatesAutoresizingMaskIntoConstraints = false
         orLabel.translatesAutoresizingMaskIntoConstraints = false
-=======
-    private func setupMatchButton() {
-        matchButton.setTitle("🚀 Начать мэтчинг", for: .normal)
-        matchButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
-        matchButton.translatesAutoresizingMaskIntoConstraints = false
-        matchButton.addTarget(self, action: #selector(startMatching), for: .touchUpInside)
-        matchButton.backgroundColor = UIColor.systemBlue
-        matchButton.setTitleColor(.white, for: .normal)
-        matchButton.layer.cornerRadius = 8
-        matchButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 20, bottom: 10, right: 20)
-        view.addSubview(matchButton)
->>>>>>> develop-design
+
         
         NSLayoutConstraint.activate([
             joinGroupStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 32),
@@ -160,8 +121,7 @@ class MatchViewController: UIViewController {
             createGroupStackView.heightAnchor.constraint(equalToConstant: 180)
         ])
     }
-    
-<<<<<<< HEAD
+
     @objc private func joinGroupTapped() {
         guard let groupId = groupIdTextField.text, !groupId.isEmpty,
               let password = passwordTextField.text, !password.isEmpty,
@@ -202,44 +162,7 @@ class MatchViewController: UIViewController {
             groupRef.child("currentMembers").setValue(currentMembers) { error, _ in
                 if let error = error {
                     self.showAlert(title: "Ошибка", message: error.localizedDescription)
-=======
-    @objc private func addIdField() {
-        let textField = UITextField()
-        textField.placeholder = "Введите ID пользователя"
-        textField.borderStyle = .roundedRect
-        textField.backgroundColor = UIColor.white
-        textField.layer.borderColor = UIColor.systemBlue.cgColor
-        textField.layer.borderWidth = 1
-        let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeToRemove(_:)))
-        swipeGesture.direction = .left
-        textField.addGestureRecognizer(swipeGesture)
-        textField.isUserInteractionEnabled = true
-        idTextFields.append(textField)
-        stackView.addArrangedSubview(textField)
-    }
-    
-    @objc private func handleSwipeToRemove(_ gesture: UISwipeGestureRecognizer) {
-        if let textField = gesture.view as? UITextField,
-           let index = idTextFields.firstIndex(of: textField) {
-            idTextFields.remove(at: index)
-            textField.removeFromSuperview()
-        }
-    }
-    
-    @objc private func startMatching() {
-        users.removeAll()
-                for textField in idTextFields {
-                    guard let id = textField.text, !id.isEmpty else { continue }
-                    if let user = knownUsersDB.first(where: { $0.id == id }) {
-                        users.append(user)
-                    }
-                }
-                
-                if users.isEmpty {
-                    let alert = UIAlertController(title: "Ошибка", message: "Не найдено пользователей с такими ID", preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "Ок", style: .default))
-                    present(alert, animated: true)
->>>>>>> develop-design
+
                 } else {
                     self.showAlert(title: "Успех", message: "Вы в группе!") {
                         self.navigateToSwipeScreen(groupId: groupId)

@@ -148,12 +148,12 @@ class SwipeViewController: UIViewController {
         avatarsStack.spacing = 8
         avatarsStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(avatarsStack)
-
+        
         NSLayoutConstraint.activate([
             avatarsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             avatarsStack.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
-
+        
         for _ in 0..<4 {
             let avatar = UIImageView()
             avatar.contentMode = .scaleAspectFill
@@ -219,64 +219,64 @@ class SwipeViewController: UIViewController {
     }
     
     private func setupSwipesListener(groupId: String) {
-            let db = Firestore.firestore()
-            
-            db.collection("groupSwipes")
-                .whereField("groupId", isEqualTo: groupId)
-                .addSnapshotListener { [weak self] snapshot, error in
-                    guard let self = self else { return }
-                    
-                    if let error = error {
-                        print("Error listening to swipes: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    guard let documents = snapshot?.documents else { return }
-                    
-                    var newLikedMovies: [Int: Set<String>] = [:]
-                    
-                    for doc in documents {
-                        guard let movieId = doc.data()["movieId"] as? Int,
-                              let userId = doc.data()["userId"] as? String,
-                              let isLiked = doc.data()["isLiked"] as? Bool,
-                              isLiked else { continue }
-                        
-                        if newLikedMovies[movieId] == nil {
-                            newLikedMovies[movieId] = []
-                        }
-                        newLikedMovies[movieId]?.insert(userId)
-                    }
-                    
-                    self.likedMovies = newLikedMovies
-                    self.checkForMatches()
-                }
-        }
+        let db = Firestore.firestore()
         
-        
-        // Добавьте этот метод для проверки мэтчей
-        private func checkForMatches() {
-            for (movieId, userIds) in likedMovies {
-                // Проверяем, всем ли участникам понравился фильм
-                if userIds.count == groupMembers.count {
-                    showMatchPopup(movieId: movieId)
-                    // Удаляем из отслеживания, чтобы не показывать повторно
-                    likedMovies.removeValue(forKey: movieId)
+        db.collection("groupSwipes")
+            .whereField("groupId", isEqualTo: groupId)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("Error listening to swipes: \(error.localizedDescription)")
+                    return
                 }
+                
+                guard let documents = snapshot?.documents else { return }
+                
+                var newLikedMovies: [Int: Set<String>] = [:]
+                
+                for doc in documents {
+                    guard let movieId = doc.data()["movieId"] as? Int,
+                          let userId = doc.data()["userId"] as? String,
+                          let isLiked = doc.data()["isLiked"] as? Bool,
+                          isLiked else { continue }
+                    
+                    if newLikedMovies[movieId] == nil {
+                        newLikedMovies[movieId] = []
+                    }
+                    newLikedMovies[movieId]?.insert(userId)
+                }
+                
+                self.likedMovies = newLikedMovies
+                self.checkForMatches()
+            }
+    }
+    
+    
+    // Добавьте этот метод для проверки мэтчей
+    private func checkForMatches() {
+        for (movieId, userIds) in likedMovies {
+            // Проверяем, всем ли участникам понравился фильм
+            if userIds.count == groupMembers.count {
+                showMatchPopup(movieId: movieId)
+                // Удаляем из отслеживания, чтобы не показывать повторно
+                likedMovies.removeValue(forKey: movieId)
             }
         }
+    }
+    
+    private func showMatchPopup(movieId: Int) {
+        guard let movie = movies.first(where: { $0.id == movieId }) else { return }
         
-        private func showMatchPopup(movieId: Int) {
-            guard let movie = movies.first(where: { $0.id == movieId }) else { return }
-            
-            let alert = UIAlertController(
-                title: "Мэтч!",
-                message: "Всем в группе понравился фильм \(movie.title)",
-                preferredStyle: .alert
-            )
-            
-            alert.addAction(UIAlertAction(title: "Круто!", style: .default))
-            present(alert, animated: true)
-        }
+        let alert = UIAlertController(
+            title: "Мэтч!",
+            message: "Всем в группе понравился фильм \(movie.title)",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Круто!", style: .default))
+        present(alert, animated: true)
+    }
     
     // MARK: - Data Loading
     private func loadMovies() {
@@ -305,42 +305,6 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Card Setup
     private func setupCards() {
-<<<<<<< HEAD
-            guard !movies.isEmpty else {
-                noMoviesLabel.text = "Нет фильмов для отображения"
-                noMoviesLabel.isHidden = false
-                return
-            }
-            
-            noMoviesLabel.isHidden = true
-            
-            // Only setup cards if all members joined or it's not a group
-            if groupId == nil || groupMembers.count >= expectedMembersCount {
-                currentCard?.removeFromSuperview()
-                nextCard?.removeFromSuperview()
-                
-                currentCard = createCard(for: movies[currentIndex])
-                guard let currentCard = currentCard else { return }
-                
-                currentCard.transform = .identity
-                currentCard.alpha = 1.0
-                currentCard.backgroundColor = .black
-                
-                let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-                currentCard.addGestureRecognizer(panGesture)
-                currentCard.isUserInteractionEnabled = true
-                
-                view.addSubview(currentCard)
-                
-                if currentIndex + 1 < movies.count {
-                    nextCard = createCard(for: movies[currentIndex + 1])
-                    if let nextCard = nextCard {
-                        nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-                        nextCard.alpha = 0.8
-                        view.insertSubview(nextCard, belowSubview: currentCard)
-                    }
-                }
-=======
         guard !movies.isEmpty else {
             noMoviesLabel.text = "Нет фильмов для отображения"
             noMoviesLabel.isHidden = false
@@ -349,35 +313,34 @@ class SwipeViewController: UIViewController {
         
         noMoviesLabel.isHidden = true
         
-        // Удаляем старые карточки
-        currentCard?.removeFromSuperview()
-        nextCard?.removeFromSuperview()
-        
-        // Создаем текущую карточку
-        currentCard = createCard(for: movies[currentIndex])
-        guard let currentCard = currentCard else { return }
-        
-        // Настраиваем внешний вид текущей карточки
-        currentCard.transform = .identity
-        currentCard.alpha = 1.0
-        currentCard.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
-        
-        // Добавляем жест ДО добавления на экран
-        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-        currentCard.addGestureRecognizer(panGesture)
-        currentCard.isUserInteractionEnabled = true
-        
-        view.addSubview(currentCard)
-        
-        // Создаем следующую карточку (если есть)
-        if currentIndex + 1 < movies.count {
-            nextCard = createCard(for: movies[currentIndex + 1])
-            if let nextCard = nextCard {
-                nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-                nextCard.alpha = 0.8
-                view.insertSubview(nextCard, belowSubview: currentCard)
->>>>>>> develop-design
+        // Only setup cards if all members joined or it's not a group
+        if groupId == nil || groupMembers.count >= expectedMembersCount {
+            currentCard?.removeFromSuperview()
+            nextCard?.removeFromSuperview()
+            
+            currentCard = createCard(for: movies[currentIndex])
+            guard let currentCard = currentCard else { return }
+            
+            currentCard.transform = .identity
+            currentCard.alpha = 1.0
+            currentCard.backgroundColor = .black
+            
+            let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+            currentCard.addGestureRecognizer(panGesture)
+            currentCard.isUserInteractionEnabled = true
+            
+            view.addSubview(currentCard)
+            
+            if currentIndex + 1 < movies.count {
+                nextCard = createCard(for: movies[currentIndex + 1])
+                if let nextCard = nextCard {
+                    nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+                    nextCard.alpha = 0.8
+                    view.insertSubview(nextCard, belowSubview: currentCard)
+                }
             }
+            
+        }
     }
     
     private func createCard(for movie: Movie) -> MovieCardView {
@@ -404,56 +367,40 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Gesture Handling
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-            // Don't allow swiping if not all members joined
-            if let groupId = groupId, groupMembers.count < expectedMembersCount {
-                showAlert(title: "Ожидание", message: "Еще не все участники подключились к группе")
-                return
-            }
+        // Don't allow swiping if not all members joined
+        if let groupId = groupId, groupMembers.count < expectedMembersCount {
+            showAlert(title: "Ожидание", message: "Еще не все участники подключились к группе")
+            return
+        }
+        
+        // Rest of the handlePan implementation remains the same
+        guard let card = gesture.view as? MovieCardView else { return }
+        
+        let translation = gesture.translation(in: view)
+        card.center = CGPoint(x: view.center.x + translation.x, y: view.center.y + translation.y)
+        
+        let rotationAngle = translation.x / view.bounds.width * 0.4
+        card.transform = CGAffineTransform(rotationAngle: rotationAngle)
+        
+        if translation.x > 0 {
+            card.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.2)
+        } else {
+            card.backgroundColor = UIColor.systemRed.withAlphaComponent(0.2)
+        }
+        
+        if gesture.state == .ended {
+            let velocity = gesture.velocity(in: view)
+            let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
+            let screenWidth = UIScreen.main.bounds.width
             
-            // Rest of the handlePan implementation remains the same
-            guard let card = gesture.view as? MovieCardView else { return }
-            
-            let translation = gesture.translation(in: view)
-            card.center = CGPoint(x: view.center.x + translation.x, y: view.center.y + translation.y)
-            
-            let rotationAngle = translation.x / view.bounds.width * 0.4
-            card.transform = CGAffineTransform(rotationAngle: rotationAngle)
-            
-            if translation.x > 0 {
-                card.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.2)
-            } else {
-                card.backgroundColor = UIColor.systemRed.withAlphaComponent(0.2)
-            }
-            
-            if gesture.state == .ended {
-                let velocity = gesture.velocity(in: view)
-                let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
-                let screenWidth = UIScreen.main.bounds.width
+            if shouldDismiss {
+                let direction: CGFloat = translation.x > 0 ? 1 : -1
+                let isLiked = direction > 0
                 
-<<<<<<< HEAD
-                if shouldDismiss {
-                    let direction: CGFloat = translation.x > 0 ? 1 : -1
-                    let isLiked = direction > 0
-                    
-                    if let groupId = groupId, let movie = currentCard?.movie {
-                        saveSwipe(movieId: movie.id, isLiked: isLiked, groupId: groupId)
-                    }
-                    
-                    UIView.animate(withDuration: 0.3, animations: {
-                        card.center = CGPoint(
-                            x: direction * screenWidth * 1.5,
-                            y: card.center.y + (direction * 100)
-                        )
-                    }) { _ in
-                        card.removeFromSuperview()
-                        self.cardSwiped(direction: direction > 0 ? .right : .left)
-                    }
-                } else {
-                    UIView.animate(withDuration: 0.3) {
-                        card.center = self.view.center
-                        card.transform = .identity
-                        card.backgroundColor = .black
-=======
+                if let groupId = groupId, let movie = currentCard?.movie {
+                    saveSwipe(movieId: movie.id, isLiked: isLiked, groupId: groupId)
+                }
+                
                 UIView.animate(withDuration: 0.3, animations: {
                     card.center = CGPoint(
                         x: direction * screenWidth * 1.5,
@@ -467,27 +414,27 @@ class SwipeViewController: UIViewController {
                 UIView.animate(withDuration: 0.3) {
                     card.center = self.view.center
                     card.transform = .identity
-                    card.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
->>>>>>> develop-design
+                    card.backgroundColor = .black
+                    
                 }
             }
         }
     }
-        
+    
     // Mетод для сохранения свайпа
     private func saveSwipe(movieId: Int, isLiked: Bool, groupId: String) {
-                guard let userId = Auth.auth().currentUser?.uid else { return }
-                
-                let db = Firestore.firestore()
-                let swipeData: [String: Any] = [
-                    "movieId": movieId,
-                    "userId": userId,
-                    "groupId": groupId,
-                    "isLiked": isLiked,
-                    "timestamp": Timestamp(date: Date())
-                ]
-                
-                db.collection("groupSwipes").addDocument(data: swipeData)
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        let swipeData: [String: Any] = [
+            "movieId": movieId,
+            "userId": userId,
+            "groupId": groupId,
+            "isLiked": isLiked,
+            "timestamp": Timestamp(date: Date())
+        ]
+        
+        db.collection("groupSwipes").addDocument(data: swipeData)
     }
     
     private func cardSwiped(direction: SwipeDirection) {
@@ -542,11 +489,10 @@ class SwipeViewController: UIViewController {
         }
         setupCards()
     }
-}
-<<<<<<< HEAD
-
-enum SwipeDirection {
-    case left, right
+    
+    enum SwipeDirection {
+        case left, right
+    }
 }
 
 // MARK: - UICollectionView DataSource & Delegate
@@ -609,5 +555,3 @@ class MemberCell: UICollectionViewCell {
         initialsLabel.text = initial
     }
 }
-=======
->>>>>>> develop-design

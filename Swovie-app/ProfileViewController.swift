@@ -158,7 +158,6 @@ class ProfileViewController: UIViewController {
         idLabel.text = "ID: \(user?.id ?? "default")"
         idLabel.font = UIFont.systemFont(ofSize: 16)
         idLabel.textColor = .tertiaryLabel
-<<<<<<< HEAD
         idLabel.isUserInteractionEnabled = true
         
         // Контейнер для ID
@@ -166,28 +165,11 @@ class ProfileViewController: UIViewController {
         idContainer.axis = .horizontal
         idContainer.spacing = 8
         idContainer.alignment = .center
-                
-        infoStack.addArrangedSubview(usernameLabel)
-        infoStack.addArrangedSubview(idLabel)
-=======
-        idLabel.textAlignment = .center
-        idLabel.numberOfLines = 1
         
-        // Кнопка "Edit Profile"
-        let editProfileButton = UIButton(type: .system)
-        editProfileButton.setTitle("Edit Profile", for: .normal)
-        editProfileButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
-        editProfileButton.backgroundColor = UIColor.systemBlue
-        editProfileButton.tintColor = .white
-        editProfileButton.layer.cornerRadius = 12
-        editProfileButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 24, bottom: 10, right: 24)
->>>>>>> develop-design
-        
-        // Добавляем только аватар, имя, ID и кнопку редактирования в стек
+        // Добавляем только аватар, имя, ID
         stack.addArrangedSubview(avatarImageView)
         stack.addArrangedSubview(usernameLabel)
         stack.addArrangedSubview(idLabel)
-        stack.addArrangedSubview(editProfileButton)
         
         profileCard.addSubview(stack)
         
