@@ -11,6 +11,10 @@ import SDWebImage
 import FirebaseFirestore
 import FirebaseAuth
 
+enum SwipeDirection {
+    case left, right
+}
+
 class SwipeViewController: UIViewController {
     
     // MARK: - Properties
@@ -137,7 +141,31 @@ class SwipeViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = "Топ фильмы"
+        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.05)
+        
+        let avatarsStack = UIStackView()
+        avatarsStack.axis = .horizontal
+        avatarsStack.spacing = 8
+        avatarsStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(avatarsStack)
+
+        NSLayoutConstraint.activate([
+            avatarsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            avatarsStack.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+        ])
+
+        for _ in 0..<4 {
+            let avatar = UIImageView()
+            avatar.contentMode = .scaleAspectFill
+            avatar.layer.cornerRadius = 30
+            avatar.layer.masksToBounds = true
+            avatar.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.4)
+            avatar.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            avatar.heightAnchor.constraint(equalToConstant: 60).isActive = true
+            avatarsStack.addArrangedSubview(avatar)
+        }
+        
+        title = "Match"
         
         // Activity Indicator
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -256,7 +284,7 @@ class SwipeViewController: UIViewController {
         
         isLoading = true
         activityIndicator.startAnimating()
-        noMoviesLabel.isHidden = true
+        noMoviesLabel.isHidden = false
         
         movieService.fetchTopMovies { [weak self] result in
             DispatchQueue.main.async {
@@ -277,6 +305,7 @@ class SwipeViewController: UIViewController {
     
     // MARK: - Card Setup
     private func setupCards() {
+<<<<<<< HEAD
             guard !movies.isEmpty else {
                 noMoviesLabel.text = "Нет фильмов для отображения"
                 noMoviesLabel.isHidden = false
@@ -311,6 +340,43 @@ class SwipeViewController: UIViewController {
                         view.insertSubview(nextCard, belowSubview: currentCard)
                     }
                 }
+=======
+        guard !movies.isEmpty else {
+            noMoviesLabel.text = "Нет фильмов для отображения"
+            noMoviesLabel.isHidden = false
+            return
+        }
+        
+        noMoviesLabel.isHidden = true
+        
+        // Удаляем старые карточки
+        currentCard?.removeFromSuperview()
+        nextCard?.removeFromSuperview()
+        
+        // Создаем текущую карточку
+        currentCard = createCard(for: movies[currentIndex])
+        guard let currentCard = currentCard else { return }
+        
+        // Настраиваем внешний вид текущей карточки
+        currentCard.transform = .identity
+        currentCard.alpha = 1.0
+        currentCard.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
+        
+        // Добавляем жест ДО добавления на экран
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+        currentCard.addGestureRecognizer(panGesture)
+        currentCard.isUserInteractionEnabled = true
+        
+        view.addSubview(currentCard)
+        
+        // Создаем следующую карточку (если есть)
+        if currentIndex + 1 < movies.count {
+            nextCard = createCard(for: movies[currentIndex + 1])
+            if let nextCard = nextCard {
+                nextCard.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+                nextCard.alpha = 0.8
+                view.insertSubview(nextCard, belowSubview: currentCard)
+>>>>>>> develop-design
             }
     }
     
@@ -318,18 +384,19 @@ class SwipeViewController: UIViewController {
         let card = MovieCardView()
         card.movie = movie
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.backgroundColor = .black  // Или ваш цвет фона
+        card.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
         card.layer.cornerRadius = 15  // Пример скругления углов
         card.clipsToBounds = true
         card.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(card)
         
         NSLayoutConstraint.activate([
-            card.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.85),
-            card.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.7),
+            card.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.7),
+            card.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.57),
             card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            card.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            card.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 50) // кастомно сдвигаем вниз на 50
         ])
+        
         
         view.layoutIfNeeded()
         return card
@@ -363,6 +430,7 @@ class SwipeViewController: UIViewController {
                 let shouldDismiss = abs(translation.x) > 100 || abs(velocity.x) > 800
                 let screenWidth = UIScreen.main.bounds.width
                 
+<<<<<<< HEAD
                 if shouldDismiss {
                     let direction: CGFloat = translation.x > 0 ? 1 : -1
                     let isLiked = direction > 0
@@ -385,6 +453,22 @@ class SwipeViewController: UIViewController {
                         card.center = self.view.center
                         card.transform = .identity
                         card.backgroundColor = .black
+=======
+                UIView.animate(withDuration: 0.3, animations: {
+                    card.center = CGPoint(
+                        x: direction * screenWidth * 1.5,
+                        y: card.center.y + (direction * 100)
+                    )
+                }) { _ in
+                    card.removeFromSuperview()
+                    self.cardSwiped(direction: direction > 0 ? .right : .left)
+                }
+            } else {
+                UIView.animate(withDuration: 0.3) {
+                    card.center = self.view.center
+                    card.transform = .identity
+                    card.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.2)
+>>>>>>> develop-design
                 }
             }
         }
@@ -459,6 +543,7 @@ class SwipeViewController: UIViewController {
         setupCards()
     }
 }
+<<<<<<< HEAD
 
 enum SwipeDirection {
     case left, right
@@ -524,3 +609,5 @@ class MemberCell: UICollectionViewCell {
         initialsLabel.text = initial
     }
 }
+=======
+>>>>>>> develop-design
