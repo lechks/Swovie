@@ -35,13 +35,13 @@ class CollectionDetailViewController: UIViewController, UITableViewDataSource, U
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        collection.reviews.count
+        collection.movies.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let review = collection.reviews[indexPath.row]
+        let review = collection.movies[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        cell.textLabel?.text = "\(review.movieId) - \(review.rating)⭐️"
+        cell.textLabel?.text = "\(review.title) - \(review.rating)⭐️"
         return cell
     }
 }

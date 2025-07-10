@@ -1,5 +1,7 @@
 import Foundation
+import FirebaseCore
 import UIKit
+import FirebaseFirestore
 
 struct Movie: Decodable, Identifiable {
     let adult: Bool
@@ -60,15 +62,10 @@ struct MovieResponse: Decodable {
     }
 }
 
-struct MovieReview {
-    let movieId: String
-    let rating: Int
-    let comment: String
-}
-
 struct MovieCollection {
+    let id: String
     let name: String
-    var reviews: [MovieReview]
+    var movies: [RatedMovie]
 }
 
 struct User {
@@ -95,5 +92,40 @@ struct FirebaseRating: Codable {
             "review": review,
             "timestamp": timestamp
         ]
+    }
+}
+
+struct RatedMovie {
+    let id: Int
+    let title: String
+    let rating: Int
+    let posterPath: String?
+    let timestamp: Date?
+    
+    init(id: Int, title: String, rating: Int, posterPath: String?, timestamp: Date? = nil) {
+        self.id = id
+        self.title = title
+        self.rating = rating
+        self.posterPath = posterPath
+        self.timestamp = timestamp
+    }
+    
+    init?(document: QueryDocumentSnapshot) {
+        let data = document.data()
+        guard let movieId = data["movieId"] as? Int,
+              let title = data["title"] as? String,
+              let rating = data["rating"] as? Int else {
+            return nil
+        }
+        
+        self.id = movieId
+        self.title = title
+        self.rating = rating
+        self.posterPath = data["posterPath"] as? String
+        if let timestamp = data["timestamp"] as? Timestamp {
+            self.timestamp = timestamp.dateValue()
+        } else {
+            self.timestamp = nil
+        }
     }
 }

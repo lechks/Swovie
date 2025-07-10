@@ -56,8 +56,8 @@ class MovieDetailViewController: UIViewController {
     }
 
     @objc private func rateTapped() {
-        print("Оценить фильм \(movie.title)")
-        // Здесь можешь вызывать свой RatingViewController
+        let ratingVC = RatingViewController(movie: movie)
+        navigationController?.pushViewController(ratingVC, animated: true)
     }
 
     @objc private func addTapped() {

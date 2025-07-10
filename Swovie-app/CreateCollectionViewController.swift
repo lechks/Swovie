@@ -175,7 +175,11 @@ class CreateCollectionViewController: UIViewController {
     
     @objc private func saveTapped() {
         guard let name = nameTextField.text, !name.isEmpty else { return }
-        let newCollection = MovieCollection(name: name, reviews: [])
+        let newCollection = MovieCollection(
+            id: UUID().uuidString,  // Generate a unique ID
+            name: name,
+            movies: []
+        )
         delegate?.didCreateCollection(newCollection)
         dismiss(animated: true)
     }

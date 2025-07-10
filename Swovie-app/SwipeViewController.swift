@@ -139,6 +139,7 @@ class SwipeViewController: UIViewController {
     }
     
     // MARK: - Setup
+    // MARK: - Setup UI
     private func setupUI() {
         view.backgroundColor = .systemBackground
         view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.05)
@@ -154,20 +155,12 @@ class SwipeViewController: UIViewController {
             avatarsStack.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
         
-        for _ in 0..<4 {
-            let avatar = UIImageView()
-            avatar.contentMode = .scaleAspectFill
-            avatar.layer.cornerRadius = 30
-            avatar.layer.masksToBounds = true
-            avatar.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.4)
-            avatar.widthAnchor.constraint(equalToConstant: 60).isActive = true
-            avatar.heightAnchor.constraint(equalToConstant: 60).isActive = true
-            avatarsStack.addArrangedSubview(avatar)
-        }
+        // Заменим статичные аватарки на динамические из группы
+        updateMemberAvatars(stack: avatarsStack)
         
         title = "Match"
         
-        // Activity Indicator
+        // Остальной код setupUI остается без изменений
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(activityIndicator)
         NSLayoutConstraint.activate([
@@ -175,7 +168,6 @@ class SwipeViewController: UIViewController {
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
         
-        // No Movies Label
         noMoviesLabel.text = "Нет фильмов для отображения"
         noMoviesLabel.textAlignment = .center
         noMoviesLabel.isHidden = true
@@ -188,7 +180,68 @@ class SwipeViewController: UIViewController {
             noMoviesLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
     }
-    
+
+    // MARK: - Update Member Avatars
+    private func updateMemberAvatars(stack: UIStackView) {
+        // Очищаем старые аватарки
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Для каждого участника группы создаем аватарку
+        for memberId in groupMembers {
+            let avatarView = UIView()
+            avatarView.backgroundColor = .systemGray4 // Цвет по умолчанию
+            avatarView.layer.cornerRadius = 30
+            avatarView.layer.masksToBounds = true
+            avatarView.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            avatarView.heightAnchor.constraint(equalToConstant: 60).isActive = true
+            
+            let initialsLabel = UILabel()
+            initialsLabel.text = String(memberId.prefix(1)).uppercased()
+            initialsLabel.textColor = .white
+            initialsLabel.font = UIFont.boldSystemFont(ofSize: 24)
+            initialsLabel.textAlignment = .center
+            initialsLabel.translatesAutoresizingMaskIntoConstraints = false
+            avatarView.addSubview(initialsLabel)
+            
+            NSLayoutConstraint.activate([
+                initialsLabel.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
+                initialsLabel.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor)
+            ])
+            
+            // Загружаем данные пользователя для получения цвета аватарки
+            loadUserAvatarColor(userId: memberId) { color in
+                DispatchQueue.main.async {
+                    avatarView.backgroundColor = color
+                }
+            }
+            
+            stack.addArrangedSubview(avatarView)
+        }
+    }
+
+    // MARK: - Load User Avatar Color
+    private func loadUserAvatarColor(userId: String, completion: @escaping (UIColor) -> Void) {
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).getDocument { snapshot, error in
+            if let error = error {
+                print("Error fetching user data: \(error.localizedDescription)")
+                completion(.systemBlue) // Возвращаем цвет по умолчанию
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let avatarHex = data["avatarColor"] as? String else {
+                completion(.systemBlue) // Возвращаем цвет по умолчанию
+                return
+            }
+            
+            // Конвертируем hex в UIColor
+            let color = UIColor(named: avatarHex) ?? .systemBlue
+            completion(color)
+        }
+    }
+
+    // Также нужно обновить метод setupGroupListeners, чтобы он обновлял аватарки при изменении состава группы:
     private func setupGroupListeners(groupId: String) {
         let db = Firestore.firestore()
         let groupRef = db.collection("groups").document(groupId)
@@ -211,6 +264,11 @@ class SwipeViewController: UIViewController {
             self.groupMembers = Array(currentMembers.keys)
             self.expectedMembersCount = membersCount
             self.updateMembersStatus()
+            
+            // Обновляем аватарки при изменении состава группы
+            if let stack = self.view.subviews.first(where: { $0 is UIStackView }) as? UIStackView {
+                self.updateMemberAvatars(stack: stack)
+            }
             
             if self.groupMembers.count >= self.expectedMembersCount {
                 self.loadMovies()

@@ -51,7 +51,6 @@ class MatchViewController: UIViewController {
         
         passwordTextField.placeholder = "Пароль доступа"
         passwordTextField.borderStyle = .roundedRect
-        passwordTextField.isSecureTextEntry = true
         
         joinButton.setTitle("Вступить в группу", for: .normal)
         joinButton.backgroundColor = .systemBlue

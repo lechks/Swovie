@@ -11,67 +11,48 @@ class RatingViewController: UIViewController {
     private let movieTitleLabel = UILabel()
     private let rateButton = UIButton(type: .system)
     
+    private var user: User?
+
+    
     private var movies: [Movie] = []
     private var filteredMovies: [Movie] = []
     private let movieService = MovieService()
-    private var currentUser: User?
     private var selectedMovie: Movie?
+    
+    private var currentUser: User? {
+        didSet {
+            print("Текущий пользователь установлен:", currentUser?.name ?? "nil")
+        }
+    }
     
     init() {
         super.init(nibName: nil, bundle: nil)
     }
     
+    
+    init(movie: Movie) {
+        self.selectedMovie = movie
+        super.init(nibName: nil, bundle: nil)
+        
+    }
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        loadUserData()
         setupUI()
-        loadPopularMovies()
+        
+        if let movie = selectedMovie {
+            showMovieDetails(movie)
+            searchBar.isHidden = true
+            tableView.isHidden = true
+        } else {
+            loadPopularMovies()
+        }
     }
     
-    private func loadCurrentUser() {
-            guard let firebaseUser = Auth.auth().currentUser else {
-                //showLoginAlert()
-                return
-            }
-        let db = Firestore.firestore()
-            // Получаем вашего пользователя из Firestore
-        db.collection("users").document(firebaseUser.uid).getDocument { [weak self] snapshot, error in
-            guard let self = self else { return }
-                
-            if let error = error {
-                print("Error fetching user: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let data = snapshot?.data() else {
-                print("User data not found")
-                return
-            }
-            
-            // Преобразуем данные Firestore в вашу структуру User
-            self.currentUser = self.parseUserData(data: data, userId: firebaseUser.uid)!
-        }
-    }
-
-    private func parseUserData(data: [String: Any], userId: String) -> User? {
-        guard let name = data["name"] as? String,
-              let avatarHex = data["avatarColor"] as? String else {
-            return nil
-        }
-        
-        let avatarColor = UIColor(named: avatarHex) ?? .systemBlue
-        var likedMovies: [Movie] = []
-        
-        return User(
-            id: userId,
-            name: name,
-            avatarName: avatarColor,
-            likedMovies: likedMovies
-        )
-    }
     
     private func setupUI() {
         view.backgroundColor = .systemBackground
@@ -173,18 +154,35 @@ class RatingViewController: UIViewController {
     }
     
     @objc private func rateButtonTapped() {
-        // Use the selectedMovie property instead of searching again
         guard let movie = selectedMovie else {
-            // Show an alert if no movie is selected
             let alert = UIAlertController(title: "Ошибка", message: "Фильм не выбран", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
             return
         }
-        
-        // Here you would typically show a rating interface
-        print("Rating movie: \(movie.title)")
-        
+            
+        if let user = user {
+            self.showRatingDialog(for: movie, user: user)
+        } else {
+            self.showErrorAlert(message: "Не удалось загрузить данные пользователя")
+        }
+    }
+    
+    private func loadUserData() {
+        AuthService.shared.fetchUserData { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let user):
+                    self?.user = user
+                case .failure(let error):
+                    print("Ошибка загрузки данных пользователя: \(error.localizedDescription)")
+                    self?.showErrorAlert(message: "Не удалось загрузить данные профиля")
+                }
+            }
+        }
+    }
+
+    private func showRatingDialog(for movie: Movie, user: User) {
         let ratingDialog = UIAlertController(
             title: "Оценить фильм",
             message: "Выберите оценку для \(movie.title)",
@@ -195,15 +193,70 @@ class RatingViewController: UIViewController {
             ratingDialog.addAction(UIAlertAction(
                 title: "\(rating)",
                 style: .default,
-                handler: { _ in
-                    print("User rated \(movie.title) with \(rating) stars")
-                    // Here you would save the rating to your database
+                handler: { [weak self] _ in
+                    self?.saveRating(rating, for: movie, user: user)
                 }
             ))
         }
         
         ratingDialog.addAction(UIAlertAction(title: "Отмена", style: .cancel))
         present(ratingDialog, animated: true)
+    }
+    
+    private func saveRating(_ rating: Int, for movie: Movie, user: User) {
+        let db = Firestore.firestore()
+        let ratingData: [String: Any] = [
+            "userId": user.id,
+            "movieId": movie.id,
+            "movieTitle": movie.title,
+            "rating": rating,
+            "timestamp": FieldValue.serverTimestamp(),
+            "posterPath": movie.posterPath ?? ""
+        ]
+        
+        db.collection("ratings").addDocument(data: ratingData) { error in
+            if let error = error {
+                print("Error saving rating: \(error.localizedDescription)")
+                self.showErrorAlert(message: "Не удалось сохранить оценку")
+            } else {
+                print("Rating saved successfully")
+                self.showSuccessAlert(message: "Вы оценили фильм на \(rating)")
+                
+                // Отправляем уведомление об обновлении оцененных фильмов
+                NotificationCenter.default.post(name: NSNotification.Name("RatingsUpdated"), object: nil)
+            }
+        }
+    }
+    
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+
+    private func updateUserRatings(movie: Movie, rating: Int) {
+        guard let userId = currentUser?.id else { return }
+        let db = Firestore.firestore()
+        
+        let userRef = db.collection("users").document(userId)
+        
+        // Добавляем оценку в подколлекцию ratedMovies
+        userRef.collection("ratedMovies").document("\(movie.id)").setData([
+            "movieId": movie.id,
+            "title": movie.title,
+            "rating": rating,
+            "timestamp": FieldValue.serverTimestamp(),
+            "posterPath": movie.posterPath ?? ""
+        ])
+    }
+
+    private func showSuccessAlert(message: String) {
+        let alert = UIAlertController(title: "Успешно", message: message, preferredStyle: .alert)
+        present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            alert.dismiss(animated: true)
+        }
     }
 }
 

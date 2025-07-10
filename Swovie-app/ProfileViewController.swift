@@ -1,19 +1,26 @@
 import UIKit
 import FirebaseAuth
-
+import FirebaseFirestore
 class ProfileViewController: UIViewController {
     
     private var user: User?
+    private var ratedMovies: [RatedMovie] = []
     private let avatarView = UIView()
     private let scrollView = UIScrollView()
     private let contentView = UIStackView()
     private var avatarImage: UIImage? = UIImage(systemName: "person.circle.fill")
-    private var collections: [MovieCollection] = [
-        MovieCollection(name: "Любимые Sci-Fi", reviews: [
-            MovieReview(movieId: "10", rating: 5, comment: "Великолепно!")
-        ])
-    ]
+    private var collections: [MovieCollection]
     
+    
+    init(collections: [MovieCollection] = []) {
+            self.collections = collections
+            super.init(nibName: nil, bundle: nil)
+    }
+    
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     
     override func viewDidLoad() {
@@ -21,27 +28,148 @@ class ProfileViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "Профиль"
         
+        loadRatedMovies()
         setupScrollView()
         setupProfileHeader()
         setupProfileInfo()
         setupLogoutButton()
         loadUserData()
+        loadRatedMoviesCollection()
+        // Добавляем наблюдатель для обновлений
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRatingsUpdate),
+            name: NSNotification.Name("RatingsUpdated"),
+            object: nil
+        )
     }
     
+    @objc private func handleRatingsUpdate() {
+        loadRatedMoviesCollection()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    
+    private func loadRatedMovies() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+            
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).collection("ratedMovies")
+            .order(by: "timestamp", descending: true)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("Error loading rated movies: \(error.localizedDescription)")
+                    return
+                }
+                
+                self.ratedMovies = snapshot?.documents.compactMap { doc in
+                    let data = doc.data()
+                    return RatedMovie(
+                        id: data["movieId"] as? Int ?? 0,
+                        title: data["title"] as? String ?? "",
+                        rating: data["rating"] as? Int ?? 0,
+                        posterPath: data["posterPath"] as? String
+                    )
+                } ?? []
+                
+                self.setupRatedMoviesSection()
+            }
+        }
+    
+    private func setupRatedMoviesSection() {
+            // Удаляем старую секцию, если есть
+            if let ratedSectionIndex = contentView.arrangedSubviews.firstIndex(where: { ($0 as? UILabel)?.text == "Оцененные фильмы" }) {
+                for view in contentView.arrangedSubviews.suffix(from: ratedSectionIndex) {
+                    view.removeFromSuperview()
+                }
+            }
+            
+            // Добавляем заголовок
+            let ratedTitleLabel = makeTitleLabel("Оцененные фильмы")
+            contentView.addArrangedSubview(ratedTitleLabel)
+            
+            // Добавляем фильмы
+            for movie in ratedMovies {
+                let movieView = createRatedMovieView(movie: movie)
+                contentView.addArrangedSubview(movieView)
+            }
+        }
+        
+        private func createRatedMovieView(movie: RatedMovie) -> UIView {
+            let container = UIView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Постер
+            let posterImageView = UIImageView()
+            posterImageView.translatesAutoresizingMaskIntoConstraints = false
+            posterImageView.contentMode = .scaleAspectFill
+            posterImageView.clipsToBounds = true
+            posterImageView.layer.cornerRadius = 8
+            if let posterPath = movie.posterPath {
+                let url = URL(string: "https://image.tmdb.org/t/p/w200\(posterPath)")
+                posterImageView.sd_setImage(with: url)
+            }
+            
+            // Название и рейтинг
+            let titleLabel = UILabel()
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            titleLabel.text = movie.title
+            titleLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+            
+            let ratingLabel = UILabel()
+            ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+            ratingLabel.text = "★ \(movie.rating)/10"
+            ratingLabel.textColor = .systemYellow
+            ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+            
+            // Стек для текста
+            let textStack = UIStackView(arrangedSubviews: [titleLabel, ratingLabel])
+            textStack.axis = .vertical
+            textStack.spacing = 4
+            textStack.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Основной стек
+            let mainStack = UIStackView(arrangedSubviews: [posterImageView, textStack])
+            mainStack.axis = .horizontal
+            mainStack.spacing = 12
+            mainStack.alignment = .center
+            mainStack.translatesAutoresizingMaskIntoConstraints = false
+            
+            container.addSubview(mainStack)
+            
+            // Констрейнты
+            NSLayoutConstraint.activate([
+                posterImageView.widthAnchor.constraint(equalToConstant: 50),
+                posterImageView.heightAnchor.constraint(equalToConstant: 75),
+                
+                mainStack.topAnchor.constraint(equalTo: container.topAnchor),
+                mainStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+                mainStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                mainStack.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+            ])
+            
+            return container
+        }
+    
     private func loadUserData() {
-            AuthService.shared.fetchUserData { [weak self] result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let user):
-                        self?.user = user
-                        self?.updateProfileUI()
-                    case .failure(let error):
-                        print("Ошибка загрузки данных пользователя: \(error.localizedDescription)")
-                        self?.showErrorAlert(message: "Не удалось загрузить данные профиля")
-                    }
+        AuthService.shared.fetchUserData { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let user):
+                    self?.user = user
+                    self?.updateProfileUI()
+                case .failure(let error):
+                    print("Ошибка загрузки данных пользователя: \(error.localizedDescription)")
+                    self?.showErrorAlert(message: "Не удалось загрузить данные профиля")
                 }
             }
         }
+    }
     
     private func updateProfileUI() {
         guard let user = user else { return }
@@ -220,6 +348,24 @@ class ProfileViewController: UIViewController {
         titleStack.alignment = .center
         titleStack.spacing = 8
         contentView.addArrangedSubview(titleStack)
+        
+        // Добавляем секцию с оцененными фильмами
+            if let ratedCollection = collections.first(where: { $0.id == "rated" }) {
+                let ratedHeader = makeTitleLabel(ratedCollection.name)
+                contentView.addArrangedSubview(ratedHeader)
+                
+                for movie in ratedCollection.movies.prefix(5) { // Показываем первые 5
+                    let movieView = createRatedMovieView(movie: movie)
+                    contentView.addArrangedSubview(movieView)
+                }
+                
+                if ratedCollection.movies.count > 5 {
+                    let showAllButton = UIButton(type: .system)
+                    showAllButton.setTitle("Показать все (\(ratedCollection.movies.count))", for: .normal)
+                    showAllButton.addTarget(self, action: #selector(showAllRatedMovies), for: .touchUpInside)
+                    contentView.addArrangedSubview(showAllButton)
+                }
+            }
 
         for (index, collection) in collections.enumerated() {
             let folderIcon = UIImageView(image: UIImage(systemName: "folder.fill"))
@@ -261,6 +407,11 @@ class ProfileViewController: UIViewController {
         navigationController?.pushViewController(detailVC, animated: true)
     }
     
+    @objc private func showAllRatedMovies() {
+        guard let ratedCollection = collections.first(where: { $0.id == "rated" }) else { return }
+        let ratedVC = RatedMoviesViewController(collection: ratedCollection)
+        navigationController?.pushViewController(ratedVC, animated: true)
+    }
     
     private func refreshProfile() {
             guard let user = user else { return }
@@ -279,7 +430,57 @@ class ProfileViewController: UIViewController {
                 usernameLabel.text = user.name
                 idLabel.text = "ID: \(user.id)"
             }
-        }
+    }
+    
+    private func loadRatedMoviesCollection() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        db.collection("ratings")
+            .whereField("userId", isEqualTo: userId)
+            .order(by: "timestamp", descending: true)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("Error loading rated movies: \(error.localizedDescription)")
+                    return
+                }
+                
+                let ratedMovies = snapshot?.documents.compactMap { doc -> RatedMovie? in
+                    let data = doc.data()
+                    guard let movieId = data["movieId"] as? Int,
+                          let title = data["movieTitle"] as? String,
+                          let rating = data["rating"] as? Int else {
+                        return nil
+                    }
+                    
+                    return RatedMovie(
+                        id: movieId,
+                        title: title,
+                        rating: rating,
+                        posterPath: data["posterPath"] as? String,
+                        timestamp: (data["timestamp"] as? Timestamp)?.dateValue()
+                    )
+                } ?? []
+                
+                // Создаем или обновляем коллекцию "Оцененные фильмы"
+                if let index = self.collections.firstIndex(where: { $0.id == "rated" }) {
+                    self.collections[index].movies = ratedMovies
+                } else {
+                    let ratedCollection = MovieCollection(
+                        id: "rated",
+                        name: "Оцененные фильмы",
+                        movies: ratedMovies
+                    )
+                    self.collections.insert(ratedCollection, at: 0)
+                }
+                
+                DispatchQueue.main.async {
+                    self.reloadCollectionsList()
+                }
+            }
+    }
     
     private func makeTitleLabel(_ text: String) -> UILabel {
         let label = UILabel()
