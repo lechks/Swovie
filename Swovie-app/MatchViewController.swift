@@ -11,6 +11,9 @@ class MatchViewController: UIViewController {
     let passwordTextField = UITextField()
     let joinButton = UIButton()
     
+    private let topLeftCircle = UIView()
+    private let bottomRightCircle = UIView()
+    
     // Элементы UI для создания группы
     let createGroupStackView = UIStackView()
     let membersCountTextField = UITextField()
@@ -22,6 +25,9 @@ class MatchViewController: UIViewController {
     
     // Ссылка на базу данных Firebase
     var ref: DatabaseReference!
+    
+    // Для хранения ID созданной группы
+    private var groupIdToNavigate: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -29,32 +35,79 @@ class MatchViewController: UIViewController {
         title = "Управление группой"
         
         ref = Database.database().reference()
-
         
+        setupBackgroundElements()
         setupJoinGroupUI()
         setupCreateGroupUI()
         setupOrLabel()
         setupConstraints()
     }
     
+    private func setupBackgroundElements() {
+        // Большой круг в левом верхнем углу
+        topLeftCircle.backgroundColor = UIColor.systemTeal.withAlphaComponent(0.1)
+        topLeftCircle.layer.cornerRadius = 150
+        topLeftCircle.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(topLeftCircle)
+            
+        // Меньший круг в правом нижнем углу
+        bottomRightCircle.backgroundColor = UIColor.systemTeal.withAlphaComponent(0.1)
+        bottomRightCircle.layer.cornerRadius = 100
+        bottomRightCircle.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bottomRightCircle)
+        
+        // Констрейнты для декоративных элементов
+        NSLayoutConstraint.activate([
+            topLeftCircle.widthAnchor.constraint(equalToConstant: 300),
+            topLeftCircle.heightAnchor.constraint(equalToConstant: 300),
+            topLeftCircle.topAnchor.constraint(equalTo: view.topAnchor, constant: -150),
+            topLeftCircle.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: -150),
+            
+            bottomRightCircle.widthAnchor.constraint(equalToConstant: 200),
+            bottomRightCircle.heightAnchor.constraint(equalToConstant: 200),
+            bottomRightCircle.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 100),
+            bottomRightCircle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 100)
+        ])
+    }
+
     private func setupJoinGroupUI() {
         joinGroupStackView.axis = .vertical
-        joinGroupStackView.spacing = 16
+        joinGroupStackView.spacing = 20
         joinGroupStackView.alignment = .fill
         joinGroupStackView.distribution = .fillEqually
-
         
+        // Настройка текстовых полей
         groupIdTextField.placeholder = "ID группы"
-        groupIdTextField.borderStyle = .roundedRect
+        groupIdTextField.backgroundColor = .white
+        groupIdTextField.layer.cornerRadius = 12
+        groupIdTextField.layer.borderWidth = 1
+        groupIdTextField.layer.borderColor = UIColor.systemGray5.cgColor
+        groupIdTextField.font = UIFont.systemFont(ofSize: 16)
+        groupIdTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: groupIdTextField.frame.height))
+        groupIdTextField.leftViewMode = .always
         groupIdTextField.autocapitalizationType = .none
         groupIdTextField.autocorrectionType = .no
         
         passwordTextField.placeholder = "Пароль доступа"
-        passwordTextField.borderStyle = .roundedRect
-        
+        passwordTextField.backgroundColor = .white
+        passwordTextField.layer.cornerRadius = 12
+        passwordTextField.layer.borderWidth = 1
+        passwordTextField.layer.borderColor = UIColor.systemGray5.cgColor
+        passwordTextField.font = UIFont.systemFont(ofSize: 16)
+        passwordTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: passwordTextField.frame.height))
+        passwordTextField.leftViewMode = .always
+        passwordTextField.isSecureTextEntry = true
+            
+        // Настройка кнопки
         joinButton.setTitle("Вступить в группу", for: .normal)
-        joinButton.backgroundColor = .systemBlue
-        joinButton.layer.cornerRadius = 8
+        joinButton.backgroundColor = UIColor.systemBlue
+        joinButton.setTitleColor(.white, for: .normal)
+        joinButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+        joinButton.layer.cornerRadius = 12
+        joinButton.layer.shadowColor = UIColor.systemBlue.cgColor
+        joinButton.layer.shadowOpacity = 0.2
+        joinButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        joinButton.layer.shadowRadius = 8
         joinButton.addTarget(self, action: #selector(joinGroupTapped), for: .touchUpInside)
         
         joinGroupStackView.addArrangedSubview(groupIdTextField)
@@ -63,25 +116,44 @@ class MatchViewController: UIViewController {
         
         view.addSubview(joinGroupStackView)
     }
-    
 
     private func setupCreateGroupUI() {
         createGroupStackView.axis = .vertical
-        createGroupStackView.spacing = 16
+        createGroupStackView.spacing = 20
         createGroupStackView.alignment = .fill
         createGroupStackView.distribution = .fillEqually
         
+        // Настройка текстовых полей
         membersCountTextField.placeholder = "Количество участников (2-10)"
-        membersCountTextField.borderStyle = .roundedRect
+        membersCountTextField.backgroundColor = .white
+        membersCountTextField.layer.cornerRadius = 12
+        membersCountTextField.layer.borderWidth = 1
+        membersCountTextField.layer.borderColor = UIColor.systemGray5.cgColor
+        membersCountTextField.font = UIFont.systemFont(ofSize: 16)
+        membersCountTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: membersCountTextField.frame.height))
+        membersCountTextField.leftViewMode = .always
         membersCountTextField.keyboardType = .numberPad
         
         createPasswordTextField.placeholder = "Придумайте пароль (мин. 6 символов)"
-        createPasswordTextField.borderStyle = .roundedRect
+        createPasswordTextField.backgroundColor = .white
+        createPasswordTextField.layer.cornerRadius = 12
+        createPasswordTextField.layer.borderWidth = 1
+        createPasswordTextField.layer.borderColor = UIColor.systemGray5.cgColor
+        createPasswordTextField.font = UIFont.systemFont(ofSize: 16)
+        createPasswordTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: createPasswordTextField.frame.height))
+        createPasswordTextField.leftViewMode = .always
         createPasswordTextField.isSecureTextEntry = true
         
+        // Настройка кнопки
         createButton.setTitle("Создать группу", for: .normal)
-        createButton.backgroundColor = .systemGreen
-        createButton.layer.cornerRadius = 8
+        createButton.backgroundColor = UIColor.systemTeal
+        createButton.setTitleColor(.white, for: .normal)
+        createButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+        createButton.layer.cornerRadius = 12
+        createButton.layer.shadowColor = UIColor.systemTeal.cgColor
+        createButton.layer.shadowOpacity = 0.2
+        createButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        createButton.layer.shadowRadius = 8
         createButton.addTarget(self, action: #selector(createGroupTapped), for: .touchUpInside)
         
         createGroupStackView.addArrangedSubview(membersCountTextField)
@@ -92,9 +164,13 @@ class MatchViewController: UIViewController {
     }
     
     private func setupOrLabel() {
-        orLabel.text = "или"
+        orLabel.text = "ИЛИ"
+        orLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        orLabel.textColor = .systemTeal
         orLabel.textAlignment = .center
-        orLabel.textColor = .secondaryLabel
+        orLabel.backgroundColor = .systemGray6
+        orLabel.layer.cornerRadius = 12
+        orLabel.clipsToBounds = true
         view.addSubview(orLabel)
     }
     
@@ -102,22 +178,22 @@ class MatchViewController: UIViewController {
         joinGroupStackView.translatesAutoresizingMaskIntoConstraints = false
         createGroupStackView.translatesAutoresizingMaskIntoConstraints = false
         orLabel.translatesAutoresizingMaskIntoConstraints = false
-
         
         NSLayoutConstraint.activate([
-            joinGroupStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 32),
+            joinGroupStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
             joinGroupStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             joinGroupStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-            joinGroupStackView.heightAnchor.constraint(equalToConstant: 180),
+            joinGroupStackView.heightAnchor.constraint(equalToConstant: 200),
             
+            orLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             orLabel.topAnchor.constraint(equalTo: joinGroupStackView.bottomAnchor, constant: 16),
-            orLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            orLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            orLabel.widthAnchor.constraint(equalToConstant: 80),
+            orLabel.heightAnchor.constraint(equalToConstant: 24),
             
             createGroupStackView.topAnchor.constraint(equalTo: orLabel.bottomAnchor, constant: 16),
             createGroupStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             createGroupStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-            createGroupStackView.heightAnchor.constraint(equalToConstant: 180)
+            createGroupStackView.heightAnchor.constraint(equalToConstant: 200)
         ])
     }
 
@@ -182,9 +258,6 @@ class MatchViewController: UIViewController {
             }
         }
     }
-
-    // Добавляем свойство для хранения ID группы
-    private var groupIdToNavigate: String?
     
     private func navigateToSwipeScreen(groupId: String) {
         let swipeVC = SwipeViewController()
@@ -242,31 +315,35 @@ class MatchViewController: UIViewController {
         }
     }
     
+    // MARK: - Custom Alert for Group Creation
+    
     private func showGroupCreatedAlert(groupId: String, password: String) {
-        // Создаем обычный UIViewController вместо UIAlertController
         let alertViewController = UIViewController()
-        alertViewController.view.backgroundColor = .systemBackground
+        alertViewController.view.backgroundColor = UIColor.black.withAlphaComponent(0.4)
         
-        // Настройка контейнера
+        // Контейнер для содержимого
         let containerView = UIView()
-        containerView.backgroundColor = .secondarySystemBackground
-        containerView.layer.cornerRadius = 12
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = 16
+        containerView.clipsToBounds = true
         containerView.translatesAutoresizingMaskIntoConstraints = false
         alertViewController.view.addSubview(containerView)
         
-        // Настройка заголовка
+        // Заголовок
         let titleLabel = UILabel()
-        titleLabel.text = "Группа создана"
+        titleLabel.text = "Группа создана!"
         titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
         titleLabel.textAlignment = .center
+        titleLabel.textColor = .systemTeal
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(titleLabel)
         
-        // Настройка текста с ID и паролем
+        // Информация о группе
         let infoLabel = UILabel()
         infoLabel.text = "ID: \(groupId)\nПароль: \(password)"
         infoLabel.numberOfLines = 0
         infoLabel.textAlignment = .center
+        infoLabel.font = UIFont.systemFont(ofSize: 16)
         infoLabel.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(infoLabel)
         
@@ -274,8 +351,9 @@ class MatchViewController: UIViewController {
         let copyButton = UIButton(type: .system)
         copyButton.setTitle("Копировать", for: .normal)
         copyButton.backgroundColor = .systemBlue
-        copyButton.layer.cornerRadius = 8
         copyButton.setTitleColor(.white, for: .normal)
+        copyButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        copyButton.layer.cornerRadius = 8
         copyButton.translatesAutoresizingMaskIntoConstraints = false
         copyButton.addTarget(self, action: #selector(copyButtonTapped), for: .touchUpInside)
         containerView.addSubview(copyButton)
@@ -283,9 +361,10 @@ class MatchViewController: UIViewController {
         // Кнопка OK
         let okButton = UIButton(type: .system)
         okButton.setTitle("OK", for: .normal)
-        okButton.backgroundColor = .systemGreen
-        okButton.layer.cornerRadius = 8
+        okButton.backgroundColor = .systemTeal
         okButton.setTitleColor(.white, for: .normal)
+        okButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        okButton.layer.cornerRadius = 8
         okButton.translatesAutoresizingMaskIntoConstraints = false
         okButton.addTarget(self, action: #selector(okButtonTapped), for: .touchUpInside)
         containerView.addSubview(okButton)
@@ -324,12 +403,12 @@ class MatchViewController: UIViewController {
         alertViewController.modalTransitionStyle = .crossDissolve
         self.present(alertViewController, animated: true)
     }
-
+    
     // Ключ для ассоциативного объекта
     private struct AssociatedKeys {
         static var groupInfo = "groupInfo"
     }
-
+    
     // Обработчики кнопок
     @objc private func copyButtonTapped(sender: UIButton) {
         if let alertVC = presentedViewController,
@@ -347,7 +426,7 @@ class MatchViewController: UIViewController {
             }
         }
     }
-
+    
     @objc private func okButtonTapped() {
         dismiss(animated: true) {
             if let groupId = self.groupIdToNavigate {

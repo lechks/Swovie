@@ -9,6 +9,8 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
     private let searchBar = UISearchBar()
     private var collectionView: UICollectionView!
     private let activityIndicator = UIActivityIndicatorView(style: .large)
+    private let topRightCircle = UIView()
+    private let bottomLeftCircle = UIView()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +21,8 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
         setupCollectionView()
         setupFilterButton()
         setupActivityIndicator()
+        
+        setupBackgroundElements()
         
         loadMovies()
     }
@@ -57,6 +61,33 @@ class CatalogViewController: UIViewController, UICollectionViewDataSource, UICol
         present(alert, animated: true)
     }
     
+        
+        private func setupBackgroundElements() {
+            // Круг в правом верхнем углу
+            topRightCircle.backgroundColor = AppColors.slate.withAlphaComponent(0.1)
+            topRightCircle.layer.cornerRadius = 120
+            topRightCircle.translatesAutoresizingMaskIntoConstraints = false
+            view.insertSubview(topRightCircle, at: 0) // Помещаем под основной контент
+            
+            // Круг в левом нижнем углу
+            bottomLeftCircle.backgroundColor = AppColors.slate.withAlphaComponent(0.1)
+            bottomLeftCircle.layer.cornerRadius = 80
+            bottomLeftCircle.translatesAutoresizingMaskIntoConstraints = false
+            view.insertSubview(bottomLeftCircle, at: 0)
+            
+            NSLayoutConstraint.activate([
+                topRightCircle.widthAnchor.constraint(equalToConstant: 240),
+                topRightCircle.heightAnchor.constraint(equalToConstant: 240),
+                topRightCircle.topAnchor.constraint(equalTo: view.topAnchor, constant: -60),
+                topRightCircle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -60),
+                
+                bottomLeftCircle.widthAnchor.constraint(equalToConstant: 160),
+                bottomLeftCircle.heightAnchor.constraint(equalToConstant: 160),
+                bottomLeftCircle.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 40),
+                bottomLeftCircle.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: -40)
+            ])
+        }
+        
     private func setupSearchBar() {
         searchBar.delegate = self
         searchBar.placeholder = "Поиск по названию или жанру"
