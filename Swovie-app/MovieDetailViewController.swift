@@ -25,7 +25,7 @@ class MovieDetailViewController: UIViewController {
     }
 
     private func setupViews() {
-        posterImageView.image = UIImage(named: movie.posterPath!)
+        posterImageView.sd_setImage(with: movie.posterURL)
         posterImageView.contentMode = .scaleAspectFill
         posterImageView.clipsToBounds = true
         posterImageView.heightAnchor.constraint(equalToConstant: 300).isActive = true

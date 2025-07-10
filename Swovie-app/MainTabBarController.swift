@@ -10,7 +10,7 @@ class MainTabBarController: UITabBarController {
                                           image: UIImage(systemName: "hand.point.right"),
                                           tag: 0)
 
-        let ratingVC = UINavigationController(rootViewController: AddMovieViewController())
+        let ratingVC = UINavigationController(rootViewController: RatingViewController())
         ratingVC.tabBarItem = UITabBarItem(title: "Оценка",
                                            image: UIImage(systemName: "star"),
                                            tag: 1)

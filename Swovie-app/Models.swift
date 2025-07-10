@@ -78,3 +78,22 @@ struct User {
     var likedMovies: [Movie] = []
 }
 
+struct FirebaseRating: Codable {
+    let userId: String
+    let movieId: Int
+    let movieTitle: String
+    let stars: Int
+    let review: String
+    let timestamp: TimeInterval
+    
+    var dictionary: [String: Any] {
+        return [
+            "userId": userId,
+            "movieId": movieId,
+            "movieTitle": movieTitle,
+            "stars": stars,
+            "review": review,
+            "timestamp": timestamp
+        ]
+    }
+}

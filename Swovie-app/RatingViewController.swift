@@ -1,182 +1,277 @@
 import UIKit
+import FirebaseFirestore
+import FirebaseAuth
 
 class RatingViewController: UIViewController {
-
+    
     // UI Elements
-    private let gradientLayer = CAGradientLayer()
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Оцените фильм"
-        label.font = UIFont.boldSystemFont(ofSize: 28)
-        label.textColor = .white
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    private let posterImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.backgroundColor = UIColor.white.withAlphaComponent(0.2) // frosted glass look
-        imageView.layer.cornerRadius = 20
-        imageView.clipsToBounds = true
-        imageView.contentMode = .scaleAspectFill
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        // Placeholder icon
-        imageView.image = UIImage(systemName: "film")?.withTintColor(.white, renderingMode: .alwaysOriginal)
-        imageView.contentMode = .center
-        return imageView
-    }()
-
-    private let movieTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Название фильма"
-        label.font = UIFont.boldSystemFont(ofSize: 22)
-        label.textColor = .white
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    private var starButtons: [UIButton] = []
-    private let starsStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.alignment = .center
-        stack.distribution = .equalSpacing
-        stack.spacing = 12
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        return stack
-    }()
-
-    private let commentTextView: UITextView = {
-        let textView = UITextView()
-        textView.backgroundColor = UIColor(red: 0.106, green: 0.384, blue: 0.757, alpha: 1.0) // #1B62C1 saturated blue
-        textView.layer.cornerRadius = 15
-        textView.font = UIFont.systemFont(ofSize: 16)
-        textView.textColor = UIColor.white
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        return textView
-    }()
-
-    private let saveButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle("Сохранить оценку", for: .normal)
-        button.backgroundColor = UIColor(red: 0.106, green: 0.384, blue: 0.757, alpha: 1.0) // #1B62C1 saturated blue
-        button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 20)
-        button.layer.cornerRadius = 25
-        button.translatesAutoresizingMaskIntoConstraints = false
-        return button
-    }()
-
+    private let searchBar = UISearchBar()
+    private let tableView = UITableView()
+    private let posterImageView = UIImageView()
+    private let movieTitleLabel = UILabel()
+    private let rateButton = UIButton(type: .system)
+    
+    private var movies: [Movie] = []
+    private var filteredMovies: [Movie] = []
+    private let movieService = MovieService()
+    private var currentUser: User?
+    private var selectedMovie: Movie?
+    
+    init() {
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupGradientBackground()
         setupUI()
+        loadPopularMovies()
     }
-
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        gradientLayer.frame = view.bounds
-    }
-
-    private func setupGradientBackground() {
-        gradientLayer.colors = [
-            UIColor(red: 0.106, green: 0.384, blue: 0.757, alpha: 1.0).cgColor, // #1B62C1
-            UIColor(red: 0.635, green: 0.839, blue: 0.976, alpha: 1.0).cgColor  // #A2D6F9
-        ]
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
-        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
-        view.layer.insertSublayer(gradientLayer, at: 0)
-    }
-
-    private func setupUI() {
-        // Title label
-        view.addSubview(titleLabel)
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
-            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
-        ])
-
-        // Poster
-        view.addSubview(posterImageView)
-        NSLayoutConstraint.activate([
-            posterImageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 30),
-            posterImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            posterImageView.widthAnchor.constraint(equalToConstant: 220),
-            posterImageView.heightAnchor.constraint(equalToConstant: 220)
-        ])
-        posterImageView.layer.shadowColor = UIColor.black.cgColor
-        posterImageView.layer.shadowOpacity = 0.2
-        posterImageView.layer.shadowOffset = CGSize(width: 0, height: 4)
-        posterImageView.layer.shadowRadius = 6
-
-        // Movie title label
-        view.addSubview(movieTitleLabel)
-        NSLayoutConstraint.activate([
-            movieTitleLabel.topAnchor.constraint(equalTo: posterImageView.bottomAnchor, constant: 16),
-            movieTitleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
-        ])
-
-        // Star buttons
-        for i in 1...5 {
-            let button = UIButton(type: .system)
-            let starImage = UIImage(systemName: "star.fill")
-            button.setImage(starImage, for: .normal)
-            button.tintColor = UIColor.yellow
-            button.translatesAutoresizingMaskIntoConstraints = false
-            button.widthAnchor.constraint(equalToConstant: 40).isActive = true
-            button.heightAnchor.constraint(equalToConstant: 40).isActive = true
-            button.addTarget(self, action: #selector(starTapped(_:)), for: .touchUpInside)
-            // Add subtle shadow for glow
-            button.layer.shadowColor = UIColor.yellow.cgColor
-            button.layer.shadowRadius = 4
-            button.layer.shadowOpacity = 0.6
-            button.layer.shadowOffset = CGSize(width: 0, height: 0)
-            starButtons.append(button)
-            starsStackView.addArrangedSubview(button)
+    
+    private func loadCurrentUser() {
+            guard let firebaseUser = Auth.auth().currentUser else {
+                //showLoginAlert()
+                return
+            }
+        let db = Firestore.firestore()
+            // Получаем вашего пользователя из Firestore
+        db.collection("users").document(firebaseUser.uid).getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+                
+            if let error = error {
+                print("Error fetching user: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = snapshot?.data() else {
+                print("User data not found")
+                return
+            }
+            
+            // Преобразуем данные Firestore в вашу структуру User
+            self.currentUser = self.parseUserData(data: data, userId: firebaseUser.uid)!
         }
-        view.addSubview(starsStackView)
-        NSLayoutConstraint.activate([
-            starsStackView.topAnchor.constraint(equalTo: movieTitleLabel.bottomAnchor, constant: 16),
-            starsStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor)
-        ])
-
-        // Comment text view
-        view.addSubview(commentTextView)
-        NSLayoutConstraint.activate([
-            commentTextView.topAnchor.constraint(equalTo: starsStackView.bottomAnchor, constant: 20),
-            commentTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            commentTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
-            commentTextView.heightAnchor.constraint(equalToConstant: 100)
-        ])
-        commentTextView.layer.shadowColor = UIColor.black.cgColor
-        commentTextView.layer.shadowOpacity = 0.1
-        commentTextView.layer.shadowOffset = CGSize(width: 0, height: 3)
-        commentTextView.layer.shadowRadius = 5
-
-        // Save button
-        view.addSubview(saveButton)
-        NSLayoutConstraint.activate([
-            saveButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
-            saveButton.heightAnchor.constraint(equalToConstant: 50),
-            saveButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -30)
-        ])
-        saveButton.layer.shadowColor = UIColor.black.cgColor
-        saveButton.layer.shadowOpacity = 0.3
-        saveButton.layer.shadowOffset = CGSize(width: 0, height: 5)
-        saveButton.layer.shadowRadius = 8
     }
 
-    @objc private func starTapped(_ sender: UIButton) {
-        UIView.animate(withDuration: 0.2,
-                       animations: { sender.transform = CGAffineTransform(scaleX: 1.3, y: 1.3) },
-                       completion: { _ in
-                           UIView.animate(withDuration: 0.2) {
-                               sender.transform = .identity
-                           }
-                       })
+    private func parseUserData(data: [String: Any], userId: String) -> User? {
+        guard let name = data["name"] as? String,
+              let avatarHex = data["avatarColor"] as? String else {
+            return nil
+        }
+        
+        let avatarColor = UIColor(named: avatarHex) ?? .systemBlue
+        var likedMovies: [Movie] = []
+        
+        return User(
+            id: userId,
+            name: name,
+            avatarName: avatarColor,
+            likedMovies: likedMovies
+        )
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .systemBackground
+        title = "Оценить фильм"
+        
+        // Search bar
+        searchBar.delegate = self
+        searchBar.placeholder = "Введите название фильма"
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
+        
+        // Table view for suggestions
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.isHidden = true
+        view.addSubview(tableView)
+        
+        // Poster image view
+        posterImageView.backgroundColor = .systemGray5
+        posterImageView.contentMode = .scaleAspectFill
+        posterImageView.layer.cornerRadius = 12
+        posterImageView.clipsToBounds = true
+        posterImageView.translatesAutoresizingMaskIntoConstraints = false
+        posterImageView.isHidden = true
+        view.addSubview(posterImageView)
+        
+        // Movie title label
+        movieTitleLabel.font = UIFont.boldSystemFont(ofSize: 20)
+        movieTitleLabel.textAlignment = .center
+        movieTitleLabel.numberOfLines = 0
+        movieTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        movieTitleLabel.isHidden = true
+        view.addSubview(movieTitleLabel)
+        
+        // Rate button
+        rateButton.setTitle("Оценить этот фильм", for: .normal)
+        rateButton.backgroundColor = .systemBlue
+        rateButton.setTitleColor(.white, for: .normal)
+        rateButton.layer.cornerRadius = 8
+        rateButton.addTarget(self, action: #selector(rateButtonTapped), for: .touchUpInside)
+        rateButton.translatesAutoresizingMaskIntoConstraints = false
+        rateButton.isHidden = true
+        view.addSubview(rateButton)
+        
+        // Constraints
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.heightAnchor.constraint(equalToConstant: 200),
+            
+            posterImageView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 20),
+            posterImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            posterImageView.widthAnchor.constraint(equalToConstant: 200),
+            posterImageView.heightAnchor.constraint(equalToConstant: 300),
+            
+            movieTitleLabel.topAnchor.constraint(equalTo: posterImageView.bottomAnchor, constant: 20),
+            movieTitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            movieTitleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            
+            rateButton.topAnchor.constraint(equalTo: movieTitleLabel.bottomAnchor, constant: 20),
+            rateButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            rateButton.widthAnchor.constraint(equalToConstant: 200),
+            rateButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+    
+    private func loadPopularMovies() {
+        movieService.fetchTopMovies { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success(let movies) = result {
+                    self?.movies = movies
+                }
+            }
+        }
+    }
+    
+    private func showMovieDetails(_ movie: Movie) {
+        selectedMovie = movie
+        movieTitleLabel.text = movie.title
+        movieTitleLabel.isHidden = false
+        posterImageView.isHidden = false
+        rateButton.isHidden = false
+        
+        if let posterPath = movie.posterPath {
+            let imageUrl = "https://image.tmdb.org/t/p/w500\(posterPath)"
+            ImageLoader().loadImage(from: imageUrl) { [weak self] image in
+                DispatchQueue.main.async {
+                    self?.posterImageView.image = image
+                }
+            }
+        }
+    }
+    
+    @objc private func rateButtonTapped() {
+        // Use the selectedMovie property instead of searching again
+        guard let movie = selectedMovie else {
+            // Show an alert if no movie is selected
+            let alert = UIAlertController(title: "Ошибка", message: "Фильм не выбран", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        
+        // Here you would typically show a rating interface
+        print("Rating movie: \(movie.title)")
+        
+        let ratingDialog = UIAlertController(
+            title: "Оценить фильм",
+            message: "Выберите оценку для \(movie.title)",
+            preferredStyle: .alert
+        )
+        
+        for rating in 1...10 {
+            ratingDialog.addAction(UIAlertAction(
+                title: "\(rating)",
+                style: .default,
+                handler: { _ in
+                    print("User rated \(movie.title) with \(rating) stars")
+                    // Here you would save the rating to your database
+                }
+            ))
+        }
+        
+        ratingDialog.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        present(ratingDialog, animated: true)
+    }
+}
+
+extension RatingViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            filteredMovies = []
+            tableView.isHidden = true
+            posterImageView.isHidden = true
+            movieTitleLabel.isHidden = true
+            rateButton.isHidden = true
+        } else {
+            filteredMovies = movies.filter { $0.title.lowercased().contains(searchText.lowercased()) }
+            tableView.isHidden = filteredMovies.isEmpty
+            tableView.reloadData()
+        }
+    }
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+}
+
+extension RatingViewController: UITableViewDataSource, UITableViewDelegate {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return filteredMovies.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let movie = filteredMovies[indexPath.row]
+        cell.textLabel?.text = movie.title
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let selectedMovie = filteredMovies[indexPath.row]
+        searchBar.text = selectedMovie.title
+        searchBar.resignFirstResponder()
+        tableView.isHidden = true
+        
+        showMovieDetails(selectedMovie)
+    }
+}
+// Вспомогательный класс для загрузки изображений
+class ImageLoader {
+    private let cache = NSCache<NSString, UIImage>()
+    
+    func loadImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
+        if let cachedImage = cache.object(forKey: urlString as NSString) {
+            completion(cachedImage)
+            return
+        }
+        
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            guard let data = data, error == nil, let image = UIImage(data: data) else {
+                completion(nil)
+                return
+            }
+            
+            self?.cache.setObject(image, forKey: urlString as NSString)
+            completion(image)
+        }.resume()
     }
 }
