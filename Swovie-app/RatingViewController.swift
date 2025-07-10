@@ -19,6 +19,12 @@ class RatingViewController: UIViewController {
     private let movieService = MovieService()
     private var selectedMovie: Movie?
     
+    // Декоративные элементы
+    private let backgroundGradient = CAGradientLayer()
+    private let topLeftCircle = UIView()
+    private let bottomRightCircle = UIView()
+    private let starsBackground = UIImageView()
+    
     private var currentUser: User? {
         didSet {
             print("Текущий пользователь установлен:", currentUser?.name ?? "nil")
@@ -40,9 +46,14 @@ class RatingViewController: UIViewController {
     }
     
     override func viewDidLoad() {
+
         super.viewDidLoad()
+        view.backgroundColor = AppColors.charcoal
+        title = "Оценить фильм"
+        setupBackground()
         loadUserData()
         setupUI()
+        
         
         if let movie = selectedMovie {
             showMovieDetails(movie)
@@ -53,54 +64,103 @@ class RatingViewController: UIViewController {
         }
     }
     
+    private func setupBackground() {
+        // Градиентный фон
+        backgroundGradient.colors = [
+            AppColors.charcoal.cgColor,
+            AppColors.slate.withAlphaComponent(0.3).cgColor,
+            AppColors.charcoal.cgColor
+        ]
+        backgroundGradient.locations = [0, 0.5, 1]
+        view.layer.insertSublayer(backgroundGradient, at: 0)
+        
+        // Декоративные круги
+        topLeftCircle.backgroundColor = AppColors.slate.withAlphaComponent(0.1)
+        topLeftCircle.layer.cornerRadius = 150
+        view.insertSubview(topLeftCircle, at: 1)
+        
+        bottomRightCircle.backgroundColor = AppColors.slate.withAlphaComponent(0.1)
+        bottomRightCircle.layer.cornerRadius = 100
+        view.insertSubview(bottomRightCircle, at: 1)
+        
+        // Звездный фон
+        starsBackground.image = UIImage(systemName: "star.fill")?
+            .withTintColor(AppColors.slate.withAlphaComponent(0.05), renderingMode: .alwaysOriginal)
+        starsBackground.contentMode = .scaleAspectFill
+        view.insertSubview(starsBackground, at: 1)
+    }
     
     private func setupUI() {
-        view.backgroundColor = .systemBackground
-        title = "Оценить фильм"
-        
-        // Search bar
+        // Настройка searchBar
         searchBar.delegate = self
-        searchBar.placeholder = "Введите название фильма"
-        searchBar.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(searchBar)
+        searchBar.placeholder = "Найти фильм..."
+        searchBar.searchTextField.backgroundColor = AppColors.slate.withAlphaComponent(0.2)
+        searchBar.searchTextField.textColor = AppColors.white
+        searchBar.searchTextField.leftView?.tintColor = AppColors.slate
+        searchBar.barTintColor = AppColors.charcoal
+        searchBar.tintColor = AppColors.slate
         
-        // Table view for suggestions
+        // Настройка tableView
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.isHidden = true
-        view.addSubview(tableView)
+        tableView.backgroundColor = AppColors.charcoal
+        tableView.separatorColor = AppColors.slate.withAlphaComponent(0.3)
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         
-        // Poster image view
-        posterImageView.backgroundColor = .systemGray5
+        // Настройка posterImageView
         posterImageView.contentMode = .scaleAspectFill
         posterImageView.layer.cornerRadius = 12
+        posterImageView.layer.borderWidth = 1
+        posterImageView.layer.borderColor = AppColors.slate.withAlphaComponent(0.3).cgColor
         posterImageView.clipsToBounds = true
-        posterImageView.translatesAutoresizingMaskIntoConstraints = false
-        posterImageView.isHidden = true
-        view.addSubview(posterImageView)
+        posterImageView.layer.shadowColor = AppColors.charcoal.cgColor
+        posterImageView.layer.shadowOpacity = 0.5
+        posterImageView.layer.shadowOffset = CGSize(width: 0, height: 4)
+        posterImageView.layer.shadowRadius = 8
         
-        // Movie title label
-        movieTitleLabel.font = UIFont.boldSystemFont(ofSize: 20)
+        // Настройка movieTitleLabel
+        movieTitleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        movieTitleLabel.textColor = AppColors.white
         movieTitleLabel.textAlignment = .center
         movieTitleLabel.numberOfLines = 0
-        movieTitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        movieTitleLabel.isHidden = true
-        view.addSubview(movieTitleLabel)
         
-        // Rate button
-        rateButton.setTitle("Оценить этот фильм", for: .normal)
-        rateButton.backgroundColor = .systemBlue
-        rateButton.setTitleColor(.white, for: .normal)
-        rateButton.layer.cornerRadius = 8
+        // Настройка rateButton
+        rateButton.setTitle("Оценить ★", for: .normal)
+        rateButton.backgroundColor = AppColors.slate
+        rateButton.setTitleColor(AppColors.white, for: .normal)
+        rateButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        rateButton.layer.cornerRadius = 12
+        rateButton.layer.shadowColor = AppColors.slate.cgColor
+        rateButton.layer.shadowOpacity = 0.3
+        rateButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        rateButton.layer.shadowRadius = 8
         rateButton.addTarget(self, action: #selector(rateButtonTapped), for: .touchUpInside)
-        rateButton.translatesAutoresizingMaskIntoConstraints = false
-        rateButton.isHidden = true
-        view.addSubview(rateButton)
         
-        // Constraints
+        // Добавление элементов и констрейнтов
+        [searchBar, tableView, posterImageView, movieTitleLabel, rateButton, starsBackground].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+        
         NSLayoutConstraint.activate([
+            // Декоративные элементы
+            topLeftCircle.widthAnchor.constraint(equalToConstant: 300),
+            topLeftCircle.heightAnchor.constraint(equalToConstant: 300),
+            topLeftCircle.topAnchor.constraint(equalTo: view.topAnchor, constant: -150),
+            topLeftCircle.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: -150),
+            
+            bottomRightCircle.widthAnchor.constraint(equalToConstant: 200),
+            bottomRightCircle.heightAnchor.constraint(equalToConstant: 200),
+            bottomRightCircle.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 100),
+            bottomRightCircle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 100),
+            
+            starsBackground.topAnchor.constraint(equalTo: view.topAnchor),
+            starsBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            starsBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            starsBackground.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            // Основные элементы
             searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -110,7 +170,7 @@ class RatingViewController: UIViewController {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.heightAnchor.constraint(equalToConstant: 200),
             
-            posterImageView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 20),
+            posterImageView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 40),
             posterImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             posterImageView.widthAnchor.constraint(equalToConstant: 200),
             posterImageView.heightAnchor.constraint(equalToConstant: 300),
@@ -119,12 +179,32 @@ class RatingViewController: UIViewController {
             movieTitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             movieTitleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             
-            rateButton.topAnchor.constraint(equalTo: movieTitleLabel.bottomAnchor, constant: 20),
+            rateButton.topAnchor.constraint(equalTo: movieTitleLabel.bottomAnchor, constant: 30),
             rateButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             rateButton.widthAnchor.constraint(equalToConstant: 200),
             rateButton.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        backgroundGradient.frame = view.bounds
+        
+        // Создаем паттерн из звезд для фона
+        let starSize: CGFloat = 24
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: starSize*5, height: starSize*5))
+        let starPattern = renderer.image { ctx in
+            for _ in 0..<10 {
+                let randomX = CGFloat.random(in: 0...starSize*5)
+                let randomY = CGFloat.random(in: 0...starSize*5)
+                let star = UIImage(systemName: "star.fill")?
+                    .withTintColor(AppColors.slate.withAlphaComponent(0.05))
+                star?.draw(in: CGRect(x: randomX, y: randomY, width: starSize, height: starSize))
+            }
+        }
+        starsBackground.image = starPattern
+    }
+    
     
     private func loadPopularMovies() {
         movieService.fetchTopMovies { [weak self] result in
@@ -328,3 +408,4 @@ class ImageLoader {
         }.resume()
     }
 }
+

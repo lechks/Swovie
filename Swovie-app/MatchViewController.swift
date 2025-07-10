@@ -289,15 +289,23 @@ class MatchViewController: UIViewController {
             return
         }
         
-        // Проверка свободных мест
-        if currentMembers.count >= membersCount {
-            showAlert(title: "Ошибка", message: "Группа уже заполнена")
+        guard let userId = Auth.auth().currentUser?.uid else {
+            showAlert(title: "Ошибка", message: "Необходима авторизация")
             return
         }
         
-        // Добавление пользователя
-        guard let userId = Auth.auth().currentUser?.uid else {
-            showAlert(title: "Ошибка", message: "Необходима авторизация")
+        // Проверяем, является ли пользователь уже участником группы
+        if currentMembers[userId] == true {
+            // Пользователь уже в группе - просто переходим к свайпам
+            showAlert(title: "Успех", message: "Вы уже в этой группе!") {
+                self.navigateToSwipeScreen(groupId: snapshot.documentID)
+            }
+            return
+        }
+        
+        // Проверка свободных мест
+        if currentMembers.count >= membersCount{
+            showAlert(title: "Ошибка", message: "Группа уже заполнена")
             return
         }
         
